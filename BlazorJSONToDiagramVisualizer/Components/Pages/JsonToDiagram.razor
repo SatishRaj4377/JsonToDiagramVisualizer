@@ -1,0 +1,148 @@
+﻿@page "/"
+@inject IJSRuntime JS
+@inject HttpClient Http
+
+<!-- Nav Bar -->
+<div id="body">
+    <div class="top-navbar">
+        <div class="top-navbar-content">
+            <div class="logo">{}JSON To Diagram Visualizer</div>
+            <div class="nav-buttons">
+                <button>File</button>
+                <button>View</button>
+                <button>Theme</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main -->
+    <div class="main-container">
+        <!-- Editor Panel -->
+        <div class="left-panel" style="width:@EditorPanelWidthPx"> 
+        <StandaloneCodeEditor CssClass="json-editor"
+                        ConstructionOptions="EditorOptions"
+                        OnDidChangeCursorPosition="OnEditorValueChanged" />
+        </div>
+
+        <!-- Splitter -->
+        <div class="splitter" @onmousedown="OnSplitterMouseDown"></div>
+
+        <!-- Diagram Panel -->
+        <div class="right-panel">
+
+        </div>
+    </div>
+</div>
+
+@code {
+    private string EditorPanelWidthPx = "300px";
+    private bool resizing = false;
+    private double startX = 0;
+    private double startWidth = 300;
+    private double windowWidth;
+    private string JsonValue;
+
+    #region Splitter
+
+    private async Task OnSplitterMouseDown(MouseEventArgs e)
+    {
+        resizing = true;
+        startX = e.ClientX;
+        if (double.TryParse(EditorPanelWidthPx.Replace("px", ""), out double w))
+        {
+            startWidth = w;
+        }
+        await JS.InvokeVoidAsync("attachResizeEvents", DotNetObjectReference.Create(this));
+        windowWidth = await JS.InvokeAsync<double>("getWindowWidth");
+    }
+
+    [JSInvokable]
+    public void OnMouseMove(double clientX)
+    {
+        if (resizing)
+        {
+            double newWidth = startWidth + (clientX - startX);
+            double maxWidth = windowWidth * 0.4; // e.g. max 40% of window
+            if (newWidth > maxWidth)
+            {
+                newWidth = maxWidth;
+            }
+            EditorPanelWidthPx = newWidth + "px";
+            InvokeAsync(StateHasChanged);
+        }
+
+    }
+
+    [JSInvokable]
+    public void OnMouseUp()
+    {
+        resizing = false;
+    }
+
+    #endregion
+
+    #region Monaco Editor
+    protected override void OnInitialized()
+    {
+        JsonValue = @"{
+    ""TestingData"": {
+        ""university"": {
+            ""name"": ""Global Tech University"",
+            ""location"": {
+            ""city"": ""San Francisco"",
+            ""state"": ""California"",
+            ""country"": ""USA""
+            }
+        },
+        ""administration"": {
+            ""chancellor"": ""Dr. Marie Curie"",
+            ""registrar"": ""Dr. Albert Einstein"",
+            ""admissions_office"": {
+            ""director"": ""Dr. Rosalind Franklin"",
+            ""application_deadline"": ""2025-05-15""
+            }
+        },
+        ""campus_facilities"": {
+            ""library"": {
+            ""name"": ""Tech Scholars Library"",
+            ""books_available"": 50000,
+            ""digital_resources"": true
+            }
+        }
+    }
+}";
+    }
+    private StandaloneEditorConstructionOptions EditorOptions(StandaloneCodeEditor _)
+    {
+        return new StandaloneEditorConstructionOptions
+        {
+            AutomaticLayout = true,
+            Language = "json",
+            Value = JsonValue,
+            Minimap = new EditorMinimapOptions
+            {
+                Enabled = false
+            },
+            Scrollbar = new EditorScrollbarOptions
+            {
+                VerticalScrollbarSize = 5,
+                HorizontalScrollbarSize = 5,
+            },
+        };
+    }
+    // Called when Monaco editor content changes
+    private void OnEditorValueChanged(CursorPositionChangedEvent e)
+    {
+        // if (e != null && e.Value != null)
+        // {
+        //     JsonValue = e.Value.ToString();
+        // }
+    }
+    #endregion
+}
+
+<style>
+    .json-editor {
+        height: 100%;
+    }
+</style>
