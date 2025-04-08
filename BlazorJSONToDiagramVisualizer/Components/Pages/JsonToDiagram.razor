@@ -19,9 +19,9 @@
     <div class="main-container">
         <!-- Editor Panel -->
         <div class="left-panel" style="width:@EditorPanelWidthPx"> 
-        <StandaloneCodeEditor CssClass="json-editor"
-                        ConstructionOptions="EditorOptions"
-                        OnDidChangeCursorPosition="OnEditorValueChanged" />
+            <StandaloneCodeEditor @ref="@monacoEditor" CssClass="json-editor"
+            ConstructionOptions="EditorOptions"
+            OnDidChangeModelContent="OnModelContentChange" />
         </div>
 
         <!-- Splitter -->
@@ -29,18 +29,35 @@
 
         <!-- Diagram Panel -->
         <div class="right-panel">
-
+            <SfDiagramComponent @ref="Diagram"
+            Width="100%" Height="100%"
+            Nodes="@Nodes" Connectors="@Connectors"
+            NodeCreating="OnNodeCreating"
+            ConnectorCreating="OnConnectorCreating">
+                <Layout Type="LayoutType.HierarchicalTree" Orientation="LayoutOrientation.LeftToRight"
+                HorizontalSpacing="40" VerticalSpacing="40" />
+            </SfDiagramComponent>
         </div>
     </div>
 </div>
 
 @code {
+    #region fields
+
     private string EditorPanelWidthPx = "300px";
     private bool resizing = false;
     private double startX = 0;
     private double startWidth = 300;
     private double windowWidth;
-    private string JsonValue;
+
+    private BlazorMonaco.Editor.StandaloneCodeEditor monacoEditor;
+    private string JsonValue = "";
+
+    private SfDiagramComponent Diagram;
+    private DiagramObjectCollection<Node> Nodes = new DiagramObjectCollection<Node>();
+    private DiagramObjectCollection<Connector> Connectors = new DiagramObjectCollection<Connector>();
+
+    #endregion
 
     #region Splitter
 
@@ -111,6 +128,7 @@
         }
     }
 }";
+        ProcessJson();
     }
     private StandaloneEditorConstructionOptions EditorOptions(StandaloneCodeEditor _)
     {
@@ -130,16 +148,198 @@
             },
         };
     }
-    // Called when Monaco editor content changes
-    private void OnEditorValueChanged(CursorPositionChangedEvent e)
+
+    private async Task OnModelContentChange(ModelContentChangedEvent e)
     {
-        // if (e != null && e.Value != null)
-        // {
-        //     JsonValue = e.Value.ToString();
-        // }
+        JsonValue = await monacoEditor.GetValue();
+        ProcessJson();
+        Diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content });
     }
+
+    #endregion
+
+    #region Diagram Component
+
+    // Build the diagram from JSON
+    private void ProcessJson()
+    {
+        try
+        {
+            Nodes.Clear();
+            Connectors.Clear();
+
+            if (!string.IsNullOrWhiteSpace(JsonValue))
+            {
+                JsonDocument doc = JsonDocument.Parse(JsonValue);
+                // Create a root node for "TestingData"
+                string rootId = Guid.NewGuid().ToString();
+                Node rootNode = new Node
+                {
+                    ID = rootId,
+                    Width = 150,
+                    Height = 50,
+                    Annotations = new DiagramObjectCollection<ShapeAnnotation>
+                    {
+                        new ShapeAnnotation { Content = "TestingData" }
+                    },
+                };
+                Nodes.Add(rootNode);
+
+                if (doc.RootElement.TryGetProperty("TestingData", out JsonElement testingData))
+                {
+                    BuildNodesFromJson(testingData, rootId);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error parsing JSON: " + ex.Message);
+        }
+        StateHasChanged();
+    }
+
+    private void BuildNodesFromJson(JsonElement element, string parentId)
+    {
+        // If it's an object => each property is a child
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (JsonProperty prop in element.EnumerateObject())
+            {
+                string childId = Guid.NewGuid().ToString();
+                string propName = prop.Name;
+                Node childNode = new Node
+                    {
+                        ID = childId,
+                        Width = 170,
+                        Height = 50,
+                        Annotations = new DiagramObjectCollection<ShapeAnnotation>
+                    {
+                        new ShapeAnnotation { Content = propName }
+                    }
+                    };
+                Nodes.Add(childNode);
+
+                Connector connector = new Connector
+                    {
+                        ID = Guid.NewGuid().ToString(),
+                        SourceID = parentId,
+                        TargetID = childId
+                    };
+                Connectors.Add(connector);
+
+                BuildNodesFromJson(prop.Value, childId);
+            }
+        }
+        // If it's an array => each item is a child node
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            int index = 0;
+            foreach (JsonElement item in element.EnumerateArray())
+            {
+                string itemId = Guid.NewGuid().ToString();
+                string arrayLabel = $"[{index}]";
+                Node arrayNode = new Node
+                {
+                    ID = itemId,
+                    Width = 170,
+                    Height = 50,
+                    Annotations = new DiagramObjectCollection<ShapeAnnotation>
+                    {
+                        new ShapeAnnotation { Content = arrayLabel }
+                    }
+                };
+                Nodes.Add(arrayNode);
+
+                Connector connector = new Connector
+                {
+                    ID = Guid.NewGuid().ToString(),
+                    SourceID = parentId,
+                    TargetID = itemId
+                };
+                Connectors.Add(connector);
+
+                BuildNodesFromJson(item, itemId);
+                index++;
+            }
+        }
+        // If it’s a primitive => make a leaf node
+        else
+        {
+            string leafId = Guid.NewGuid().ToString();
+            string valueStr = element.ToString() ?? "null";
+            Node leafNode = new Node
+            {
+                ID = leafId,
+                Width = 200,
+                Height = 50,
+                Annotations = new DiagramObjectCollection<ShapeAnnotation>
+                {
+                    new ShapeAnnotation { Content = valueStr }
+                }
+            };
+            Nodes.Add(leafNode);
+
+            Connector leafConnector = new Connector
+                {
+                    ID = Guid.NewGuid().ToString(),
+                    SourceID = parentId,
+                    TargetID = leafId
+                };
+            Connectors.Add(leafConnector);
+        }
+    }
+
+    private void OnNodeCreating(IDiagramObject obj)
+    {
+        Node node = obj as Node;
+        if (node != null)
+        {
+            node.ExpandIcon = new DiagramExpandIcon()
+            {
+                Shape = DiagramExpandIcons.Minus,
+                Width = 50,
+                Height = 50
+            };
+            node.CollapseIcon = new DiagramCollapseIcon()
+            {
+                Shape = DiagramCollapseIcons.Plus,
+                Width = 50,
+                Height = 50
+            };
+            // Light fill, darker border
+            node.Style = new ShapeStyle { Fill = "#ffffff", StrokeColor = "#bcbebf", StrokeWidth = 1 };
+            if (node.Annotations != null && node.Annotations.Count > 0)
+            {
+                node.Annotations[0].Style = new TextStyle
+                {
+                    Color = "#535353",
+                    Bold = false,
+                    FontSize = 13
+                };
+            }
+        }
+    }
+
+    private void OnConnectorCreating(IDiagramObject obj)
+    {
+        Connector connector = obj as Connector;
+        if (connector != null)
+        {
+            connector.Type = ConnectorSegmentType.Orthogonal;
+            connector.CornerRadius = 15;
+            connector.Style = new ShapeStyle { StrokeColor = "#bcbebf", StrokeWidth = 1.5 };
+            connector.TargetDecorator = new DecoratorSettings
+            {
+                Shape = DecoratorShape.None
+            };
+        }
+    }
+
+
     #endregion
 }
+
+
 
 <style>
     .json-editor {
