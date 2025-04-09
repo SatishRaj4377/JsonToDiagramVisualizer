@@ -2,6 +2,8 @@
 @inject IJSRuntime JS
 @inject HttpClient Http
 
+<PageTitle>Diagram-JSON</PageTitle>
+
 <!-- Nav Bar -->
 <div id="body">
     <div class="top-navbar">
@@ -29,13 +31,8 @@
 
         <!-- Diagram Panel -->
         <div class="right-panel">
-            <SfDiagramComponent @ref="Diagram"
-            Width="100%" Height="100%"
-            Nodes="@Nodes" Connectors="@Connectors"
-            NodeCreating="OnNodeCreating"
-            ConnectorCreating="OnConnectorCreating">
-                <Layout Type="LayoutType.HierarchicalTree" Orientation="LayoutOrientation.LeftToRight"
-                HorizontalSpacing="40" VerticalSpacing="40" />
+            <SfDiagramComponent @ref="Diagram" Width="100%" Height="100%" Created="OnCreated" NodeCreating="OnNodeCreating" ConnectorCreating="OnConnectorCreating">
+                <Layout Type="LayoutType.HierarchicalTree" Orientation="LayoutOrientation.LeftToRight" HorizontalSpacing="40" VerticalSpacing="40" /> 
             </SfDiagramComponent>
         </div>
     </div>
@@ -54,8 +51,8 @@
     private string JsonValue = "";
 
     private SfDiagramComponent Diagram;
-    private DiagramObjectCollection<Node> Nodes = new DiagramObjectCollection<Node>();
-    private DiagramObjectCollection<Connector> Connectors = new DiagramObjectCollection<Connector>();
+    private DiagramObjectCollection<NodeBase> NodeBase = new DiagramObjectCollection<NodeBase>();
+    private DiagramData diagramData = new DiagramData();
 
     #endregion
 
@@ -101,6 +98,7 @@
     #region Monaco Editor
     protected override void OnInitialized()
     {
+        // Initialize the Monaco editor with a default JSON value.
         JsonValue = @"{
     ""TestingData"": {
         ""university"": {
@@ -128,8 +126,8 @@
         }
     }
 }";
-        ProcessJson();
     }
+
     private StandaloneEditorConstructionOptions EditorOptions(StandaloneCodeEditor _)
     {
         return new StandaloneEditorConstructionOptions
@@ -152,141 +150,53 @@
     private async Task OnModelContentChange(ModelContentChangedEvent e)
     {
         JsonValue = await monacoEditor.GetValue();
-        ProcessJson();
-        Diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content });
+        await ParseAndUpdateDiagram();
     }
 
     #endregion
 
     #region Diagram Component
 
-    // Build the diagram from JSON
-    private void ProcessJson()
+    private async Task ParseAndUpdateDiagram()
     {
         try
         {
-            Nodes.Clear();
-            Connectors.Clear();
-
-            if (!string.IsNullOrWhiteSpace(JsonValue))
+            using (JsonDocument doc = JsonDocument.Parse(JsonValue))
             {
-                JsonDocument doc = JsonDocument.Parse(JsonValue);
-                // Create a root node for "TestingData"
-                string rootId = Guid.NewGuid().ToString();
-                Node rootNode = new Node
-                {
-                    ID = rootId,
-                    Width = 150,
-                    Height = 50,
-                    Annotations = new DiagramObjectCollection<ShapeAnnotation>
-                    {
-                        new ShapeAnnotation { Content = "TestingData" }
-                    },
-                };
-                Nodes.Add(rootNode);
-
-                if (doc.RootElement.TryGetProperty("TestingData", out JsonElement testingData))
-                {
-                    BuildNodesFromJson(testingData, rootId);
-                }
+                diagramData = JsonDiagramParser.ProcessData(doc.RootElement);
             }
+
+            // Clear existing nodes and connectors
+            Diagram.Clear();
+            NodeBase.Clear();
+
+            foreach (var node in diagramData.Nodes)
+            {
+                NodeBase.Add(node);
+            }
+            foreach (var conn in diagramData.Connectors)
+            {
+                NodeBase.Add(conn);
+            }
+
+            // Add nodes and connectors to the diagram
+            await Diagram.AddDiagramElementsAsync(NodeBase);
+
+            // Update the diagram layout
+            await Diagram.DoLayoutAsync();
+
+            // Fit the diagram to the page
+            Diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content });
         }
         catch (Exception ex)
         {
-            Console.WriteLine("Error parsing JSON: " + ex.Message);
+            Console.WriteLine($"Error parsing JSON: {ex.Message}");
         }
-        StateHasChanged();
     }
 
-    private void BuildNodesFromJson(JsonElement element, string parentId)
+    private async Task OnCreated()
     {
-        // If it's an object => each property is a child
-        if (element.ValueKind == JsonValueKind.Object)
-        {
-            foreach (JsonProperty prop in element.EnumerateObject())
-            {
-                string childId = Guid.NewGuid().ToString();
-                string propName = prop.Name;
-                Node childNode = new Node
-                    {
-                        ID = childId,
-                        Width = 170,
-                        Height = 50,
-                        Annotations = new DiagramObjectCollection<ShapeAnnotation>
-                    {
-                        new ShapeAnnotation { Content = propName }
-                    }
-                    };
-                Nodes.Add(childNode);
-
-                Connector connector = new Connector
-                    {
-                        ID = Guid.NewGuid().ToString(),
-                        SourceID = parentId,
-                        TargetID = childId
-                    };
-                Connectors.Add(connector);
-
-                BuildNodesFromJson(prop.Value, childId);
-            }
-        }
-        // If it's an array => each item is a child node
-        else if (element.ValueKind == JsonValueKind.Array)
-        {
-            int index = 0;
-            foreach (JsonElement item in element.EnumerateArray())
-            {
-                string itemId = Guid.NewGuid().ToString();
-                string arrayLabel = $"[{index}]";
-                Node arrayNode = new Node
-                {
-                    ID = itemId,
-                    Width = 170,
-                    Height = 50,
-                    Annotations = new DiagramObjectCollection<ShapeAnnotation>
-                    {
-                        new ShapeAnnotation { Content = arrayLabel }
-                    }
-                };
-                Nodes.Add(arrayNode);
-
-                Connector connector = new Connector
-                {
-                    ID = Guid.NewGuid().ToString(),
-                    SourceID = parentId,
-                    TargetID = itemId
-                };
-                Connectors.Add(connector);
-
-                BuildNodesFromJson(item, itemId);
-                index++;
-            }
-        }
-        // If it’s a primitive => make a leaf node
-        else
-        {
-            string leafId = Guid.NewGuid().ToString();
-            string valueStr = element.ToString() ?? "null";
-            Node leafNode = new Node
-            {
-                ID = leafId,
-                Width = 200,
-                Height = 50,
-                Annotations = new DiagramObjectCollection<ShapeAnnotation>
-                {
-                    new ShapeAnnotation { Content = valueStr }
-                }
-            };
-            Nodes.Add(leafNode);
-
-            Connector leafConnector = new Connector
-                {
-                    ID = Guid.NewGuid().ToString(),
-                    SourceID = parentId,
-                    TargetID = leafId
-                };
-            Connectors.Add(leafConnector);
-        }
+        await ParseAndUpdateDiagram();
     }
 
     private void OnNodeCreating(IDiagramObject obj)
@@ -335,11 +245,8 @@
         }
     }
 
-
     #endregion
 }
-
-
 
 <style>
     .json-editor {
