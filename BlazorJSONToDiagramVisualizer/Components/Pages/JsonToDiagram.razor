@@ -205,30 +205,40 @@
         Node node = obj as Node;
         if (node != null)
         {
-            node.ExpandIcon = new DiagramExpandIcon()
-            {
-                Shape = DiagramExpandIcons.Minus,
-                Width = 50,
-                Height = node.Height ?? 50,
-                HorizontalAlignment = HorizontalAlignment.Right
-            };
-            node.CollapseIcon = new DiagramCollapseIcon()
-            {
-                Shape = DiagramCollapseIcons.Plus,
-                Width = 50,
-                Height = node.Height ?? 50,
-                HorizontalAlignment = HorizontalAlignment.Right
-            };
-            // Light fill, darker border
             node.Style = new ShapeStyle { Fill = "#ffffff", StrokeColor = "#bcbebf", StrokeWidth = 1 };
-            if (node.Annotations != null && node.Annotations.Count > 0)
+
+            if (node.ID != "main-root")
             {
-                node.Annotations[0].Style = new TextStyle
+                node.ExpandIcon = new DiagramExpandIcon()
                 {
-                    Color = "#535353",
-                    Bold = false,
-                    FontSize = 13
+                    Shape = DiagramExpandIcons.Minus,
+                    Width = 50,
+                    Height = node.Height ?? 50,
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    CornerRadius = 3,
                 };
+                node.CollapseIcon = new DiagramCollapseIcon()
+                {
+                    Shape = DiagramCollapseIcons.Plus,
+                    Width = 50,
+                    Height = node.Height ?? 50,
+                    HorizontalAlignment = HorizontalAlignment.Right,
+                    CornerRadius = 3,
+                };                
+                if (node.Annotations != null && node.Annotations.Count > 0)
+                {
+                    node.Annotations[0].Style = new TextStyle
+                    {
+                        Color = "#535353",
+                        Bold = false,
+                        FontSize = 13
+                    };
+                }
+                node.Shape = new BasicShape { Shape = NodeBasicShapes.Rectangle, Type = NodeShapes.Basic , CornerRadius = 3};
+            }
+            else
+            {
+                node.Shape = new BasicShape { Shape = NodeBasicShapes.Ellipse, Type = NodeShapes.Basic };
             }
         }
     }

@@ -62,20 +62,26 @@ public static class JsonDiagramParser
         foreach (var key in nonLeafNodes)
         {
             string nodeId = key;
-            double nodeWidth = CalculateWidth(key, MAX_NODE_CONTENT_LENGTH, false);
-            double nodeHeight = CalculateHeight(key, MAX_NODE_CONTENT_LENGTH);
             int childCount = GetObjectLength(data.GetProperty(key));
-            string textContent = childCount > 0 ? $"{key} {{{childCount}}}" : key;
+
+            var annotations = new DiagramObjectCollection<ShapeAnnotation>
+            {
+                new ShapeAnnotation { Content = key }
+            };
+            if (childCount > 0)
+            {
+                annotations.Add(new ShapeAnnotation { Content = "{" + childCount + "}" });
+            }
+
+            double nodeWidth = CalculateWidth(key + childCount.ToString(), MAX_NODE_CONTENT_LENGTH, false);
+            double nodeHeight = CalculateHeight(key + "\n" + childCount, MAX_NODE_CONTENT_LENGTH);
 
             var childNode = new Node
             {
                 ID = nodeId,
                 Width = nodeWidth,
                 Height = nodeHeight,
-                Annotations = new DiagramObjectCollection<ShapeAnnotation>
-                {
-                    new ShapeAnnotation { Content = textContent }
-                },
+                Annotations = annotations,
                 Data = new { path = $"Root.{key}", title = key, actualdata = key, displayContent = new { key = new string[] { key }, displayValue = childCount } }
             };
             diagramData.Nodes.Add(childNode);
@@ -159,19 +165,26 @@ public static class JsonDiagramParser
                         string childPath = $"{parentPath}/{keyName}[{index}].{child.Name}";
                         string label = child.Name;
 
-                        double width = CalculateWidth(label, MAX_NODE_CONTENT_LENGTH, false);
-                        double height = CalculateHeight(label, MAX_NODE_CONTENT_LENGTH);
+                        int childCount = GetObjectLength(child.Value);
+                        var annotations = new DiagramObjectCollection<ShapeAnnotation>
+                        {
+                            new ShapeAnnotation { Content = label }
+                        };
+                        if (childCount > 0)
+                        {
+                            annotations.Add(new ShapeAnnotation { Content = "{" + childCount + "}" });
+                        }
+
+                        double width = CalculateWidth(label + childCount, MAX_NODE_CONTENT_LENGTH, false);
+                        double height = CalculateHeight(label + "\n" + childCount, MAX_NODE_CONTENT_LENGTH);
 
                         var childNode = new Node
                         {
                             ID = childId,
                             Width = width,
                             Height = height,
-                            Annotations = new DiagramObjectCollection<ShapeAnnotation>
-                            {
-                                new ShapeAnnotation { Content = label }
-                            },
-                            Data = new { path = childPath, title = child.Name, actualdata = child.Name }
+                            Annotations = annotations,
+                            Data = new { path = childPath, title = label, actualdata = label }
                         };
                         nodeList.Add(childNode);
                         connectorList.Add(new Connector
@@ -257,17 +270,26 @@ public static class JsonDiagramParser
             string displayText = element.GetProperty(prop).ValueKind == JsonValueKind.Array
                                     ? $"{prop} [{GetObjectLength(element.GetProperty(prop))}]"
                                     : prop;
-            double width = CalculateWidth(displayText, MAX_NODE_CONTENT_LENGTH, false);
-            double height = CalculateHeight(displayText, MAX_NODE_CONTENT_LENGTH);
+
+            int childCount = GetObjectLength(element.GetProperty(prop));
+            var annotations = new DiagramObjectCollection<ShapeAnnotation>
+            {
+                new ShapeAnnotation { Content = prop }
+            };
+            if (childCount > 0)
+            {
+                annotations.Add(new ShapeAnnotation { Content = "{" + childCount + "}" });
+            }
+
+            double width = CalculateWidth(displayText + childCount, MAX_NODE_CONTENT_LENGTH, false);
+            double height = CalculateHeight(displayText + "\n" + childCount, MAX_NODE_CONTENT_LENGTH);
+
             var childNode = new Node
             {
                 ID = childId,
                 Width = width,
                 Height = height,
-                Annotations = new DiagramObjectCollection<ShapeAnnotation>
-                {
-                    new ShapeAnnotation { Content = displayText }
-                },
+                Annotations = annotations,
                 Data = new { path = $"{parentPath}.{prop}", title = prop, actualdata = prop }
             };
             nodeList.Add(childNode);
@@ -295,12 +317,6 @@ public static class JsonDiagramParser
                 ID = mainRootId,
                 Width = 40,
                 Height = 40,
-                Shape = new BasicShape()
-                {
-                    Type = NodeShapes.Basic,
-                    Shape = NodeBasicShapes.Rectangle,
-                    CornerRadius = 10
-                },
                 Annotations = new DiagramObjectCollection<ShapeAnnotation>
                 {
                     new ShapeAnnotation { Content = "" }
