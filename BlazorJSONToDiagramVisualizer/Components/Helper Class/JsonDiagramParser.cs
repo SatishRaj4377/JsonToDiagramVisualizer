@@ -116,7 +116,74 @@ public static class JsonDiagramParser
                 // For objects within an array, recursively process
                 if (item.ValueKind == JsonValueKind.Object)
                 {
-                    ProcessNestedData(item, nodeId, nodeList, connectorList, $"{parentPath}/{keyName}[{index}]", keyName);
+                    // Collect primitive fields to merge into a single node (same behavior as current logic)
+                    var primitiveList = item.EnumerateObject()
+                        .Where(p => p.Value.ValueKind != JsonValueKind.Object && p.Value.ValueKind != JsonValueKind.Array)
+                        .Select(p => $"{p.Name}: {p.Value}")
+                        .ToList();
+
+                    if (primitiveList.Count > 0)
+                    {
+                        string mergedContent = string.Join("\n", primitiveList);
+                        double width = CalculateWidth(mergedContent, MAX_NODE_CONTENT_LENGTH, true);
+                        double height = CalculateHeight(mergedContent, MAX_NODE_CONTENT_LENGTH);
+
+                        var mergedNode = new Node
+                        {
+                            ID = nodeId,
+                            Width = width,
+                            Height = height,
+                            Annotations = new DiagramObjectCollection<ShapeAnnotation>
+                            {
+                                new ShapeAnnotation { Content = mergedContent }
+                            },
+                            Data = new { path = $"{parentPath}/{keyName}[{index}]", title = mergedContent, actualdata = mergedContent }
+                        };
+                        nodeList.Add(mergedNode);
+                        connectorList.Add(new Connector
+                        {
+                            ID = $"connector-{parentId}-{nodeId}",
+                            SourceID = parentId,
+                            TargetID = nodeId
+                        });
+                    }
+
+                    // Recursively process any non-primitives (object or array)
+                    var children = item.EnumerateObject()
+                        .Where(p => p.Value.ValueKind == JsonValueKind.Object || p.Value.ValueKind == JsonValueKind.Array)
+                        .ToList();
+
+                    foreach (var child in children)
+                    {
+                        string childId = $"{nodeId}-{child.Name}";
+                        string childPath = $"{parentPath}/{keyName}[{index}].{child.Name}";
+                        string label = child.Name;
+
+                        double width = CalculateWidth(label, MAX_NODE_CONTENT_LENGTH, false);
+                        double height = CalculateHeight(label, MAX_NODE_CONTENT_LENGTH);
+
+                        var childNode = new Node
+                        {
+                            ID = childId,
+                            Width = width,
+                            Height = height,
+                            Annotations = new DiagramObjectCollection<ShapeAnnotation>
+                            {
+                                new ShapeAnnotation { Content = label }
+                            },
+                            Data = new { path = childPath, title = child.Name, actualdata = child.Name }
+                        };
+                        nodeList.Add(childNode);
+                        connectorList.Add(new Connector
+                        {
+                            ID = $"connector-{nodeId}-{childId}",
+                            SourceID = nodeId,
+                            TargetID = childId
+                        });
+
+                        // Recursively process nested object
+                        ProcessNestedData(child.Value, childId, nodeList, connectorList, childPath, child.Name);
+                    }
                 }
                 else // Primitive value in array
                 {

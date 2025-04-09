@@ -32,7 +32,7 @@
         <!-- Diagram Panel -->
         <div class="right-panel">
             <SfDiagramComponent @ref="Diagram" Width="100%" Height="100%" Created="OnCreated" NodeCreating="OnNodeCreating" ConnectorCreating="OnConnectorCreating">
-                <Layout Type="LayoutType.HierarchicalTree" Orientation="LayoutOrientation.LeftToRight" HorizontalSpacing="40" VerticalSpacing="40" /> 
+                <Layout Type="LayoutType.HierarchicalTree" SamePoint="false" Orientation="LayoutOrientation.LeftToRight" HorizontalSpacing="30" VerticalSpacing="100" /> 
             </SfDiagramComponent>
         </div>
     </div>
@@ -209,13 +209,15 @@
             {
                 Shape = DiagramExpandIcons.Minus,
                 Width = 50,
-                Height = 50
+                Height = node.Height ?? 50,
+                HorizontalAlignment = HorizontalAlignment.Right
             };
             node.CollapseIcon = new DiagramCollapseIcon()
             {
                 Shape = DiagramCollapseIcons.Plus,
                 Width = 50,
-                Height = 50
+                Height = node.Height ?? 50,
+                HorizontalAlignment = HorizontalAlignment.Right
             };
             // Light fill, darker border
             node.Style = new ShapeStyle { Fill = "#ffffff", StrokeColor = "#bcbebf", StrokeWidth = 1 };
