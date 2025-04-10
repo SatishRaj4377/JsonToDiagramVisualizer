@@ -392,7 +392,7 @@ IsModal="true"
 
     private void OnDiagramNodeClick(ClickEventArgs args)
     {
-        if (args.Element is Node node && node.Data != null)
+        if (args.Element is Node node && node.Data != null && args.ActualObject != null)
         {
             var nodeData = node.Data.GetType().GetProperty("actualdata")?.GetValue(node.Data, null)?.ToString();
             var path = node.Data.GetType().GetProperty("path")?.GetValue(node.Data, null)?.ToString();
