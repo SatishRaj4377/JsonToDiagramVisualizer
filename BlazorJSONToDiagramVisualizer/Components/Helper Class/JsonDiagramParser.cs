@@ -6,8 +6,8 @@ using Syncfusion.Blazor.Diagram;
 
 public static class JsonDiagramParser
 {
-    private const int MAX_NODE_CONTENT_LENGTH = 100;
-    private const double stableIconHeight = 39.25;
+    private const double DEFAULT_NODE_WIDTH = 150;
+    private const double DEFAULT_NODE_HEIGHT = 50;
 
     public static DiagramData ProcessData(JsonElement data)
     {
@@ -42,19 +42,19 @@ public static class JsonDiagramParser
         {
             rootCreated = true;
             string mergedContent = string.Join("\n", primitives.Select(key => $"{key}: {data.GetProperty(key)}"));
-            double nodeWidth = CalculateWidth(mergedContent, MAX_NODE_CONTENT_LENGTH, false);
-            double nodeHeight = CalculateHeight(mergedContent, MAX_NODE_CONTENT_LENGTH);
             var rootNode = new Node
             {
                 ID = rootNodeId,
-                Width = nodeWidth,
-                Height = nodeHeight,
+                Width = DEFAULT_NODE_WIDTH,
+                Height = DEFAULT_NODE_HEIGHT,
                 Annotations = new DiagramObjectCollection<ShapeAnnotation>
                 {
                     new ShapeAnnotation { Content = mergedContent }
-                },
-                Data = new { path = "Root", title = mergedContent, actualdata = mergedContent }
+                }, 
+                AdditionalInfo = new Dictionary<string, object> { { "isLeaf", false } },
+                Data = new { path = "Root", title = mergedContent, actualdata = mergedContent, }
             };
+            rootNode.AdditionalInfo.Add("mergedContent", mergedContent);
             diagramData.Nodes.Add(rootNode);
         }
 
@@ -73,17 +73,16 @@ public static class JsonDiagramParser
                 annotations.Add(new ShapeAnnotation { Content = "{" + childCount + "}" });
             }
 
-            double nodeWidth = CalculateWidth(key + childCount.ToString(), MAX_NODE_CONTENT_LENGTH, false);
-            double nodeHeight = CalculateHeight(key + "\n" + childCount, MAX_NODE_CONTENT_LENGTH);
-
             var childNode = new Node
             {
                 ID = nodeId,
-                Width = nodeWidth,
-                Height = nodeHeight,
+                Width = DEFAULT_NODE_WIDTH,
+                Height = DEFAULT_NODE_HEIGHT,
                 Annotations = annotations,
-                Data = new { path = $"Root.{key}", title = key, actualdata = key, displayContent = new { key = new string[] { key }, displayValue = childCount } }
+                Data = new { path = $"Root.{key}", title = key, actualdata = key, displayContent = new { key = new string[] { key }, displayValue = childCount } },
+                AdditionalInfo = new Dictionary<string, object> { { "isLeaf", false } },
             };
+            childNode.AdditionalInfo.Add("mergedContent", key + " {" + childCount + "}");
             diagramData.Nodes.Add(childNode);
 
             // If a root node (with primitives) was created, link it to these children.
@@ -131,20 +130,19 @@ public static class JsonDiagramParser
                     if (primitiveList.Count > 0)
                     {
                         string mergedContent = string.Join("\n", primitiveList);
-                        double width = CalculateWidth(mergedContent, MAX_NODE_CONTENT_LENGTH, true);
-                        double height = CalculateHeight(mergedContent, MAX_NODE_CONTENT_LENGTH);
-
                         var mergedNode = new Node
                         {
                             ID = nodeId,
-                            Width = width,
-                            Height = height,
+                            Width = DEFAULT_NODE_WIDTH,
+                            Height = DEFAULT_NODE_HEIGHT,
                             Annotations = new DiagramObjectCollection<ShapeAnnotation>
                             {
                                 new ShapeAnnotation { Content = mergedContent }
                             },
+                            AdditionalInfo = new Dictionary<string, object> { { "isLeaf", true } },
                             Data = new { path = $"{parentPath}/{keyName}[{index}]", title = mergedContent, actualdata = mergedContent }
                         };
+                        mergedNode.AdditionalInfo.Add("mergedContent", mergedContent);
                         nodeList.Add(mergedNode);
                         connectorList.Add(new Connector
                         {
@@ -174,18 +172,16 @@ public static class JsonDiagramParser
                         {
                             annotations.Add(new ShapeAnnotation { Content = "{" + childCount + "}" });
                         }
-
-                        double width = CalculateWidth(label + childCount, MAX_NODE_CONTENT_LENGTH, false);
-                        double height = CalculateHeight(label + "\n" + childCount, MAX_NODE_CONTENT_LENGTH);
-
                         var childNode = new Node
                         {
                             ID = childId,
-                            Width = width,
-                            Height = height,
+                            Width = DEFAULT_NODE_WIDTH,
+                            Height = DEFAULT_NODE_HEIGHT,
                             Annotations = annotations,
+                            AdditionalInfo = new Dictionary<string, object> { { "isLeaf", false } },
                             Data = new { path = childPath, title = label, actualdata = label }
                         };
+                        childNode.AdditionalInfo.Add("mergedContent", label + " {" + childCount + "}");
                         nodeList.Add(childNode);
                         connectorList.Add(new Connector
                         {
@@ -201,19 +197,19 @@ public static class JsonDiagramParser
                 else // Primitive value in array
                 {
                     string content = item.ToString();
-                    double width = CalculateWidth(content, MAX_NODE_CONTENT_LENGTH, true);
-                    double height = CalculateHeight(content, MAX_NODE_CONTENT_LENGTH);
                     var primitiveNode = new Node
                     {
                         ID = nodeId,
-                        Width = width,
-                        Height = height,
+                        Width = DEFAULT_NODE_WIDTH,
+                        Height = DEFAULT_NODE_HEIGHT,
                         Annotations = new DiagramObjectCollection<ShapeAnnotation>
                         {
                             new ShapeAnnotation { Content = content }
                         },
+                        AdditionalInfo = new Dictionary<string, object> { { "isLeaf", true } },
                         Data = new { path = $"{parentPath}/{keyName}[{index}]", title = content, actualdata = content }
                     };
+                    primitiveNode.AdditionalInfo.Add("mergedContent", content);
                     nodeList.Add(primitiveNode);
                     connectorList.Add(new Connector
                     {
@@ -241,19 +237,19 @@ public static class JsonDiagramParser
         {
             string mergedContent = string.Join("\n", primitives.Select(p => $"{p}: {element.GetProperty(p)}"));
             string leafId = parentId + "-leaf";
-            double width = CalculateWidth(mergedContent, MAX_NODE_CONTENT_LENGTH, true);
-            double height = CalculateHeight(mergedContent, MAX_NODE_CONTENT_LENGTH);
             var leafNode = new Node
             {
                 ID = leafId,
-                Width = width,
-                Height = height,
+                Width = DEFAULT_NODE_WIDTH,
+                Height = DEFAULT_NODE_HEIGHT,
                 Annotations = new DiagramObjectCollection<ShapeAnnotation>
                 {
                     new ShapeAnnotation { Content = mergedContent }
                 },
+                AdditionalInfo = new Dictionary<string, object> { { "isLeaf", true } },
                 Data = new { path = $"{parentPath}.leaf", title = mergedContent, actualdata = mergedContent }
             };
+            leafNode.AdditionalInfo.Add("mergedContent", mergedContent);
             nodeList.Add(leafNode);
             connectorList.Add(new Connector
             {
@@ -281,17 +277,16 @@ public static class JsonDiagramParser
                 annotations.Add(new ShapeAnnotation { Content = "{" + childCount + "}" });
             }
 
-            double width = CalculateWidth(displayText + childCount, MAX_NODE_CONTENT_LENGTH, false);
-            double height = CalculateHeight(displayText + "\n" + childCount, MAX_NODE_CONTENT_LENGTH);
-
             var childNode = new Node
             {
                 ID = childId,
-                Width = width,
-                Height = height,
+                Width = DEFAULT_NODE_WIDTH,
+                Height = DEFAULT_NODE_HEIGHT,
                 Annotations = annotations,
+                AdditionalInfo = new Dictionary<string, object> { { "isLeaf", false } },
                 Data = new { path = $"{parentPath}.{prop}", title = prop, actualdata = prop }
             };
+            childNode.AdditionalInfo.Add("mergedContent", prop + " {" + childCount + "}");
             nodeList.Add(childNode);
             connectorList.Add(new Connector
             {
@@ -336,28 +331,6 @@ public static class JsonDiagramParser
         }
     }
 
-    // Returns an approximate width based on character count and fixed pixel multiplier.
-    private static double CalculateWidth(string content, int maxLength, bool isLeaf)
-    {
-        // This is a simplified version that you can refine.
-        // Multiply by 8 pixels per character and add extra for icon if not leaf.
-        int length = content.Length;
-        double baseWidth = Math.Max(150, length * 8);
-        if (!isLeaf)
-            baseWidth += stableIconHeight;
-        return baseWidth;
-    }
-
-    // Returns an approximate height based on number of lines.
-    private static double CalculateHeight(string content, int maxLength)
-    {
-        var lines = content.Split('\n');
-        int lineCount = lines.Length;
-        double baseHeight = 20;
-        double lineHeight = 20;
-        return baseHeight + lineCount * lineHeight;
-    }
-
     // Returns the child count for a JSON object or array.
     private static int GetObjectLength(JsonElement element)
     {
@@ -380,6 +353,6 @@ public static class JsonDiagramParser
 
 public class DiagramData
 {
-    public List<Syncfusion.Blazor.Diagram.Node> Nodes { get; set; } = new List<Syncfusion.Blazor.Diagram.Node>();
-    public List<Syncfusion.Blazor.Diagram.Connector> Connectors { get; set; } = new List<Syncfusion.Blazor.Diagram.Connector>();
+    public List<Node> Nodes { get; set; } = new List<Syncfusion.Blazor.Diagram.Node>();
+    public List<Connector> Connectors { get; set; } = new List<Syncfusion.Blazor.Diagram.Connector>();
 }

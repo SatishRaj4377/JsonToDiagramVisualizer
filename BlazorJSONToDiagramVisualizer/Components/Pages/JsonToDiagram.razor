@@ -20,7 +20,7 @@
     <!-- Main -->
     <div class="main-container">
         <!-- Editor Panel -->
-        <div class="left-panel" style="width:@EditorPanelWidthPx"> 
+        <div class="left-panel" style="width:@editorPanelWidthPx"> 
             <StandaloneCodeEditor @ref="@monacoEditor" CssClass="json-editor"
             ConstructionOptions="EditorOptions"
             OnDidChangeModelContent="OnModelContentChange" />
@@ -31,7 +31,7 @@
 
         <!-- Diagram Panel -->
         <div class="right-panel">
-            <SfDiagramComponent @ref="Diagram" Width="100%" Height="100%" Created="OnCreated" NodeCreating="OnNodeCreating" ConnectorCreating="OnConnectorCreating">
+            <SfDiagramComponent @ref="diagram" Width="100%" Height="100%" Created="OnCreated" NodeCreating="OnNodeCreating" ConnectorCreating="OnConnectorCreating">
                 <Layout Type="LayoutType.HierarchicalTree" SamePoint="false" Orientation="LayoutOrientation.LeftToRight" HorizontalSpacing="30" VerticalSpacing="100" /> 
             </SfDiagramComponent>
         </div>
@@ -41,18 +41,22 @@
 @code {
     #region fields
 
-    private string EditorPanelWidthPx = "300px";
+    private string editorPanelWidthPx = "300px";
     private bool resizing = false;
     private double startX = 0;
     private double startWidth = 300;
     private double windowWidth;
 
     private BlazorMonaco.Editor.StandaloneCodeEditor monacoEditor;
-    private string JsonValue = "";
+    private string jsonValue = "";
 
-    private SfDiagramComponent Diagram;
-    private DiagramObjectCollection<NodeBase> NodeBase = new DiagramObjectCollection<NodeBase>();
+    private SfDiagramComponent diagram;
+    private DiagramObjectCollection<NodeBase> nodeBase = new DiagramObjectCollection<NodeBase>();
     private DiagramData diagramData = new DiagramData();
+
+    private double expandCollapseIconWidth = 50;
+    private int nodeCornerRadius = 3;
+    private double minNodeWidth = 120;
 
     #endregion
 
@@ -62,7 +66,7 @@
     {
         resizing = true;
         startX = e.ClientX;
-        if (double.TryParse(EditorPanelWidthPx.Replace("px", ""), out double w))
+        if (double.TryParse(editorPanelWidthPx.Replace("px", ""), out double w))
         {
             startWidth = w;
         }
@@ -81,7 +85,7 @@
             {
                 newWidth = maxWidth;
             }
-            EditorPanelWidthPx = newWidth + "px";
+            editorPanelWidthPx = newWidth + "px";
             InvokeAsync(StateHasChanged);
         }
 
@@ -99,7 +103,7 @@
     protected override void OnInitialized()
     {
         // Initialize the Monaco editor with a default JSON value.
-        JsonValue = @"{
+        jsonValue = @"{
     ""TestingData"": {
         ""university"": {
             ""name"": ""Global Tech University"",
@@ -134,7 +138,7 @@
         {
             AutomaticLayout = true,
             Language = "json",
-            Value = JsonValue,
+            Value = jsonValue,
             Minimap = new EditorMinimapOptions
             {
                 Enabled = false
@@ -150,7 +154,7 @@
 
     private async Task OnModelContentChange(ModelContentChangedEvent e)
     {
-        JsonValue = await monacoEditor.GetValue();
+        jsonValue = await monacoEditor.GetValue();
         await ParseAndUpdateDiagram();
     }
 
@@ -158,61 +162,27 @@
 
     #region Diagram Component
 
-    private async Task ParseAndUpdateDiagram()
-    {
-        try
-        {
-            using (JsonDocument doc = JsonDocument.Parse(JsonValue))
-            {
-                diagramData = JsonDiagramParser.ProcessData(doc.RootElement);
-            }
-
-            // Clear existing nodes and connectors
-            Diagram.Clear();
-            NodeBase.Clear();
-
-            foreach (var node in diagramData.Nodes)
-            {
-                NodeBase.Add(node);
-            }
-            foreach (var conn in diagramData.Connectors)
-            {
-                NodeBase.Add(conn);
-            }
-
-            // Add nodes and connectors to the diagram
-            await Diagram.AddDiagramElementsAsync(NodeBase);
-
-            // Update the diagram layout
-            await Diagram.DoLayoutAsync();
-
-            // Fit the diagram to the page
-            Diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content });
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error parsing JSON: {ex.Message}");
-        }
-    }
-
     private async Task OnCreated()
     {
         await ParseAndUpdateDiagram();
     }
 
-    private void OnNodeCreating(IDiagramObject obj)
+    private async Task OnNodeCreating(IDiagramObject obj)
     {
         Node node = obj as Node;
         if (node != null)
         {
             node.Style = new ShapeStyle { Fill = "#ffffff", StrokeColor = "#bcbebf", StrokeWidth = 1 };
-
+            var (width, height) = await GetNodeSizeAsync((string)node.AdditionalInfo["mergedContent"], (bool)node.AdditionalInfo["isLeaf"], minNodeWidth);
+            node.Width = width;
+            node.Height = height;
+            AdjustNodeAnnotationPosition(node);
             if (node.ID != "main-root")
             {
                 node.ExpandIcon = new DiagramExpandIcon()
                 {
                     Shape = DiagramExpandIcons.Minus,
-                    Width = 50,
+                    Width = expandCollapseIconWidth,
                     Height = node.Height ?? 50,
                     HorizontalAlignment = HorizontalAlignment.Right,
                     CornerRadius = 3,
@@ -220,10 +190,10 @@
                 node.CollapseIcon = new DiagramCollapseIcon()
                 {
                     Shape = DiagramCollapseIcons.Plus,
-                    Width = 50,
+                    Width = expandCollapseIconWidth,
                     Height = node.Height ?? 50,
                     HorizontalAlignment = HorizontalAlignment.Right,
-                    CornerRadius = 3,
+                    CornerRadius = nodeCornerRadius,
                 };                
                 if (node.Annotations != null && node.Annotations.Count > 0)
                 {
@@ -231,10 +201,11 @@
                     {
                         Color = "#535353",
                         Bold = false,
-                        FontSize = 13
+                        FontSize = 13,
+                        TextAlign = TextAlign.Left ,
                     };
                 }
-                node.Shape = new BasicShape { Shape = NodeBasicShapes.Rectangle, Type = NodeShapes.Basic , CornerRadius = 3};
+                node.Shape = new BasicShape { Shape = NodeBasicShapes.Rectangle, Type = NodeShapes.Basic , CornerRadius = nodeCornerRadius};
             }
             else
             {
@@ -258,6 +229,87 @@
         }
     }
 
+    private async Task ParseAndUpdateDiagram()
+    {
+        try
+        {
+            using (JsonDocument doc = JsonDocument.Parse(jsonValue))
+            {
+                diagramData = JsonDiagramParser.ProcessData(doc.RootElement);
+            }
+
+            // Clear existing nodes and connectors
+            diagram.Clear();
+            nodeBase.Clear();
+
+            foreach (var node in diagramData.Nodes)
+            {
+                nodeBase.Add(node);
+            }
+            foreach (var conn in diagramData.Connectors)
+            {
+                nodeBase.Add(conn);
+            }
+
+            // Add nodes and connectors to the diagram
+            await diagram.AddDiagramElementsAsync(nodeBase);
+
+            // Update the diagram layout
+            await diagram.DoLayoutAsync();
+
+            // Fit the diagram to the page
+            diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content });
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("showError", "Error parsing JSON: " + ex.Message);
+            Console.WriteLine($"Error parsing JSON: {ex.Message}");
+        }
+    }
+
+    private async Task<(double width, double height)> GetNodeSizeAsync(string content, bool isLeaf, double minWidth)
+    {
+        var result = await JS.InvokeAsync<Dictionary<string, double>>("getTextSize", content);
+
+        double iconExtra = isLeaf ? 0 : expandCollapseIconWidth;
+        double width = result["width"] + iconExtra;
+
+        width = Math.Max(minWidth, width);
+
+        return (width, result["height"]);
+    }
+
+
+    private void AdjustNodeAnnotationPosition(Node node)
+    {
+        int padding = 10;
+
+        if (node.Annotations == null || node.Annotations.Count == 0)
+            return;
+
+        if (node.Annotations.Count >= 2)
+        {
+            // Left-align the first annotation
+            var annotation1 = node.Annotations[0];
+            annotation1.Offset = new DiagramPoint { X = 0, Y = 0.5 };
+            annotation1.HorizontalAlignment = HorizontalAlignment.Left;
+            annotation1.Style = new TextStyle
+            {
+                TextAlign = TextAlign.Left,
+            };
+            annotation1.Margin = new DiagramThickness { Left = padding };
+
+            // Right-align the second annotation
+            var annotation2 = node.Annotations[1];
+            annotation2.Offset = new DiagramPoint { X = 1, Y = 0.5 };
+            annotation2.HorizontalAlignment = HorizontalAlignment.Right;
+            annotation2.Style = new TextStyle
+            {
+                TextAlign = TextAlign.Right,
+            };
+            annotation2.Margin = new DiagramThickness { Right = expandCollapseIconWidth + padding };
+        }
+    }
     #endregion
 }
 
