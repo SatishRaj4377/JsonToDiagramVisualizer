@@ -31,12 +31,80 @@
 
         <!-- Diagram Panel -->
         <div class="right-panel">
-            <SfDiagramComponent @ref="diagram" Width="100%" Height="100%" Created="OnCreated" NodeCreating="OnNodeCreating" ConnectorCreating="OnConnectorCreating">
+            <SfDiagramComponent @ref="diagram" Click="OnDiagramNodeClick" Width="100%" Height="100%" Created="OnCreated" NodeCreating="OnNodeCreating" ConnectorCreating="OnConnectorCreating">
                 <Layout Type="LayoutType.HierarchicalTree" SamePoint="false" Orientation="LayoutOrientation.LeftToRight" HorizontalSpacing="30" VerticalSpacing="100" /> 
             </SfDiagramComponent>
         </div>
     </div>
 </div>
+
+
+<!-- Popup Dialog -->
+<SfDialog Width="400px"
+Header="Node Details"
+ShowCloseIcon="true" 
+IsModal="true"
+@bind-Visible="isDialogVisible">
+    <DialogEvents OnOverlayModalClick="@OverlayClick"></DialogEvents>
+    <DialogTemplates>
+        <Content>
+            <div style="padding: 10px; font-family:Consolas">
+                <!-- Node Content Section -->
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight:bold; font-size:14px; display:block; margin-bottom:5px;">Content</label>
+                    <div style="
+                        background-color:#f8f8f8;
+                        border-radius:5px;
+                        position:relative;
+                        font-size:14px;">
+                        <!-- Scrollable content -->
+                        <div style="padding:10px; overflow-x:auto; white-space:pre;">
+                            @FormatNodeDataInPopup(selectedNodeContent)
+                        </div>
+
+                        <!-- Copy button stays fixed -->
+                        <button @onclick="() => CopyNodeData(selectedNodeContent)" style="
+                            position:absolute;
+                            top:5px;
+                            right:5px;
+                            background:transparent;
+                            border:none;
+                            cursor:pointer;">
+                            <span class="e-icons @(isNodeContentCopied ? "e-check" : "e-copy")"></span>
+                        </button>
+                    </div>
+
+                </div>
+                <!-- JSON Path Section -->
+                <div>
+                    <label style="font-weight:bold; font-size:14px; display:block; margin-bottom:5px;">JSON Path</label>
+                    <div style="
+                        background-color:#f8f8f8;
+                        border-radius:5px;
+                        position:relative;
+                        font-size:14px;">
+                        <!-- Scrollable content -->
+                        <div style="padding:10px; overflow-x:auto; white-space:pre;">
+                            @FormatNodeDataInPopup(selectedNodePath, true)
+                        </div>
+
+                        <!-- Copy button stays fixed -->
+                        <button @onclick="() => CopyNodeData(selectedNodePath, true)" style="
+                            position:absolute;
+                            top:5px;
+                            right:5px;
+                            background:transparent;
+                            border:none;
+                            cursor:pointer;">
+                            <span class="e-icons @(isNodePathCopied ? "e-check" : "e-copy")"></span>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </Content>
+    </DialogTemplates>
+</SfDialog>
 
 @code {
     #region fields
@@ -54,9 +122,15 @@
     private DiagramObjectCollection<NodeBase> nodeBase = new DiagramObjectCollection<NodeBase>();
     private DiagramData diagramData = new DiagramData();
 
-    private double expandCollapseIconWidth = 50;
+    private double expandCollapseIconWidth = 36;
     private int nodeCornerRadius = 3;
     private double minNodeWidth = 120;
+
+    private bool isDialogVisible = false;
+    private string selectedNodePath = "";
+    private string selectedNodeContent = "";
+    private bool isNodeContentCopied = false;
+    private bool isNodePathCopied = false;
 
     #endregion
 
@@ -185,7 +259,8 @@
                     Width = expandCollapseIconWidth,
                     Height = node.Height ?? 50,
                     HorizontalAlignment = HorizontalAlignment.Right,
-                    CornerRadius = 3,
+                    CornerRadius = nodeCornerRadius,
+                    BorderColor = "#bcbebf",
                 };
                 node.CollapseIcon = new DiagramCollapseIcon()
                 {
@@ -194,6 +269,7 @@
                     Height = node.Height ?? 50,
                     HorizontalAlignment = HorizontalAlignment.Right,
                     CornerRadius = nodeCornerRadius,
+                    BorderColor = "#bcbebf",
                 };                
                 if (node.Annotations != null && node.Annotations.Count > 0)
                 {
@@ -309,6 +385,121 @@
             };
             annotation2.Margin = new DiagramThickness { Right = expandCollapseIconWidth + padding };
         }
+    }
+    #endregion
+
+    #region Popup Dialog
+
+    private void OnDiagramNodeClick(ClickEventArgs args)
+    {
+        if (args.Element is Node node && node.Data != null)
+        {
+            var nodeData = node.Data.GetType().GetProperty("actualdata")?.GetValue(node.Data, null)?.ToString();
+            var path = node.Data.GetType().GetProperty("path")?.GetValue(node.Data, null)?.ToString();
+
+            if (!string.IsNullOrEmpty(nodeData) && !string.IsNullOrEmpty(path))
+            {
+                ShowNodePopup(nodeData, path);
+            }
+        }
+    }
+
+    private void ShowNodePopup(string nodeContent, string nodePath)
+    {
+        selectedNodeContent = nodeContent;
+        selectedNodePath = nodePath;
+        isDialogVisible = true;
+    }
+
+    private RenderFragment FormatNodeDataInPopup(string content, bool isPath = false) => __builder =>
+    {
+        if (string.IsNullOrWhiteSpace(content))
+            return;
+
+        var lines = content.Split('\n');
+        int seq = 0;
+        foreach (var line in lines)
+        {
+            __builder.OpenElement(seq++, "div");
+            // Split the line at first colon, if possible.
+            var parts = line.Split(new char[] { ':' }, 2, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 2)
+            {
+                var key = parts[0].Trim();
+                var value = parts[1].Trim();
+
+                // Render key (purple, bold)
+                __builder.OpenElement(seq++, "span");
+                __builder.AddAttribute(seq++, "style", "color:#9C27B0; font-weight:bold; margin-right:5px;");
+                __builder.AddContent(seq++, key);
+                __builder.CloseElement();
+
+                // Render colon separator
+                __builder.OpenElement(seq++, "span");
+                __builder.AddAttribute(seq++, "style", "margin-right:5px;");
+                __builder.AddContent(seq++, ":");
+                __builder.CloseElement();
+
+                // Render value (green)
+                __builder.OpenElement(seq++, "span");
+                __builder.AddAttribute(seq++, "style", "color:#4CAF50;");
+                __builder.AddContent(seq++, value);
+                __builder.CloseElement();
+            }
+            else
+            {
+                // If no colon, render the line in default styling
+                if (isPath)
+                {
+                    __builder.AddContent(seq++, AddCurlyBracesAroundRoot(line));
+                }
+                else
+                {
+                    __builder.AddAttribute(seq++, "style", "color:#4CAF50;");
+                    __builder.AddContent(seq++, line);
+                }
+            }
+            __builder.CloseElement();
+        }
+    };
+
+    private string AddCurlyBracesAroundRoot(string input)
+    {
+        int firstDotIndex = input.IndexOf('.');
+        if (firstDotIndex == -1)
+        {
+            return input;
+        }
+        string root = input.Substring(0, firstDotIndex);
+        string restOfString = input.Substring(firstDotIndex);
+
+        return $"{{{root}}}{restOfString}";
+    }
+
+    private async Task CopyNodeData(string data, bool isPath = false)
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", data);
+
+        if (isPath)
+            isNodePathCopied = true;
+        else
+            isNodeContentCopied = true;
+
+        StateHasChanged();
+
+        await Task.Delay(1500);
+
+        StateHasChanged();
+
+        if (isPath)
+            isNodePathCopied = false;
+        else
+            isNodeContentCopied = false;
+    }
+
+    private void OverlayClick(OverlayModalClickEventArgs args)
+    {
+        isDialogVisible = false;
     }
     #endregion
 }
