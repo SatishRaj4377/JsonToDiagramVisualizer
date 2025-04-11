@@ -33,78 +33,121 @@
         <div class="right-panel">
             <SfDiagramComponent @ref="diagram" Click="OnDiagramNodeClick" Width="100%" Height="100%" Created="OnCreated" NodeCreating="OnNodeCreating" ConnectorCreating="OnConnectorCreating">
                 <Layout Type="LayoutType.HierarchicalTree" SamePoint="false" Orientation="LayoutOrientation.LeftToRight" HorizontalSpacing="30" VerticalSpacing="100" /> 
-            </SfDiagramComponent>
+                <DiagramTemplates>
+                    <AnnotationTemplate>
+                        @if (context is Annotation annotation)
+                            {
+                                if (annotation.UseTemplate && annotation.ID.Contains("LeafNode"))
+                                {
+                                    string[] lines = annotation.Content?.ToString()?.Split('\n', StringSplitOptions.RemoveEmptyEntries) ?? new string[0];
+                                    <div style="height: 100%; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: start; margin-left: 10px">
+                                        @foreach (var line in lines)
+                                        {
+                                            var colonIndex = line.IndexOf(':');
+                                            var key = colonIndex >= 0 ? line.Substring(0, colonIndex + 1) : line;
+                                            var rawValue = colonIndex >= 0 ? line.Substring(colonIndex + 1).Trim() : "";
+                                            string valueStyle = "color: black;";
+                                            bool isString = true;
+
+                                            if (int.TryParse(rawValue, out _))
+                                            {
+                                                valueStyle = "color: brown;";
+                                                isString = false;
+                                            }
+                                            else if (bool.TryParse(rawValue, out bool boolVal))
+                                            {
+                                                valueStyle = "color: green;";
+                                                rawValue = boolVal.ToString().ToLower();
+                                                isString = false;
+                                            }
+
+                                            string displayValue = isString && !string.IsNullOrWhiteSpace(rawValue) ? $"\"{rawValue}\"" : rawValue;
+
+                                            <div style="display: flex; justify-content: center; align-items: center; padding-top: 2px; padding-bottom: 3px;">
+                                                <span style="color: blue;">@key</span>
+                                                @if (!string.IsNullOrWhiteSpace(displayValue))
+                                                {
+                                                    <span style="@valueStyle; line-height:1.4">&nbsp;@displayValue</span>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            }
+                        </AnnotationTemplate>
+                    </DiagramTemplates>
+                </SfDiagramComponent>
+            </div>
         </div>
     </div>
-</div>
 
 
-<!-- Popup Dialog -->
-<SfDialog Width="400px"
-Header="Node Details"
-ShowCloseIcon="true" 
-IsModal="true"
-@bind-Visible="isDialogVisible">
-    <DialogEvents OnOverlayModalClick="@OverlayClick"></DialogEvents>
-    <DialogTemplates>
-        <Content>
-            <div style="padding: 10px; font-family:Consolas">
-                <!-- Node Content Section -->
-                <div style="margin-bottom: 15px;">
-                    <label style="font-weight:bold; font-size:14px; display:block; margin-bottom:5px;">Content</label>
-                    <div style="
+    <!-- Popup Dialog -->
+    <SfDialog Width="400px"
+        Header="Node Details"
+        ShowCloseIcon="true" 
+        IsModal="true"
+        @bind-Visible="isDialogVisible">
+        <DialogEvents OnOverlayModalClick="@OverlayClick"></DialogEvents>
+        <DialogTemplates>
+            <Content>
+                <div style="padding: 10px; font-family:Consolas">
+                    <!-- Node Content Section -->
+                    <div style="margin-bottom: 15px;">
+                        <label style="font-weight:bold; font-size:14px; display:block; margin-bottom:5px;">Content</label>
+                        <div style="
                         background-color:#f8f8f8;
                         border-radius:5px;
                         position:relative;
                         font-size:14px;">
-                        <!-- Scrollable content -->
-                        <div style="padding:10px; overflow-x:auto; white-space:pre;">
-                            @FormatNodeDataInPopup(selectedNodeContent)
-                        </div>
+                            <!-- Scrollable content -->
+                            <div style="padding:10px; overflow-x:auto; white-space:pre;">
+                                @FormatNodeDataInPopup(selectedNodeContent)
+                            </div>
 
-                        <!-- Copy button stays fixed -->
-                        <button @onclick="() => CopyNodeData(selectedNodeContent)" style="
+                            <!-- Copy button stays fixed -->
+                            <button @onclick="() => CopyNodeData(selectedNodeContent)" style="
                             position:absolute;
                             top:5px;
                             right:5px;
                             background:transparent;
                             border:none;
                             cursor:pointer;">
-                            <span class="e-icons @(isNodeContentCopied ? "e-check" : "e-copy")"></span>
-                        </button>
-                    </div>
+                                <span class="e-icons @(isNodeContentCopied ? "e-check" : "e-copy")"></span>
+                            </button>
+                        </div>
 
-                </div>
-                <!-- JSON Path Section -->
-                <div>
-                    <label style="font-weight:bold; font-size:14px; display:block; margin-bottom:5px;">JSON Path</label>
-                    <div style="
+                    </div>
+                    <!-- JSON Path Section -->
+                    <div>
+                        <label style="font-weight:bold; font-size:14px; display:block; margin-bottom:5px;">JSON Path</label>
+                        <div style="
                         background-color:#f8f8f8;
                         border-radius:5px;
                         position:relative;
                         font-size:14px;">
-                        <!-- Scrollable content -->
-                        <div style="padding:10px; overflow-x:auto; white-space:pre;">
-                            @FormatNodeDataInPopup(selectedNodePath, true)
-                        </div>
+                            <!-- Scrollable content -->
+                            <div style="padding:10px; overflow-x:auto; white-space:pre;">
+                                @FormatNodeDataInPopup(selectedNodePath, true)
+                            </div>
 
-                        <!-- Copy button stays fixed -->
-                        <button @onclick="() => CopyNodeData(selectedNodePath, true)" style="
+                            <!-- Copy button stays fixed -->
+                            <button @onclick="() => CopyNodeData(selectedNodePath, true)" style="
                             position:absolute;
                             top:5px;
                             right:5px;
                             background:transparent;
                             border:none;
                             cursor:pointer;">
-                            <span class="e-icons @(isNodePathCopied ? "e-check" : "e-copy")"></span>
-                        </button>
-                    </div>
+                                <span class="e-icons @(isNodePathCopied ? "e-check" : "e-copy")"></span>
+                            </button>
+                        </div>
 
+                    </div>
                 </div>
-            </div>
-        </Content>
-    </DialogTemplates>
-</SfDialog>
+            </Content>
+        </DialogTemplates>
+    </SfDialog>
 
 @code {
     #region fields
@@ -253,33 +296,26 @@ IsModal="true"
             AdjustNodeAnnotationPosition(node);
             if (node.ID != "main-root")
             {
-                node.ExpandIcon = new DiagramExpandIcon()
+                if (!(bool)node.AdditionalInfo["isLeaf"])
                 {
-                    Shape = DiagramExpandIcons.Minus,
-                    Width = expandCollapseIconWidth,
-                    Height = node.Height ?? 50,
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    CornerRadius = nodeCornerRadius,
-                    BorderColor = "#bcbebf",
-                };
-                node.CollapseIcon = new DiagramCollapseIcon()
-                {
-                    Shape = DiagramCollapseIcons.Plus,
-                    Width = expandCollapseIconWidth,
-                    Height = node.Height ?? 50,
-                    HorizontalAlignment = HorizontalAlignment.Right,
-                    CornerRadius = nodeCornerRadius,
-                    BorderColor = "#bcbebf",
-                };                
-                if (node.Annotations != null && node.Annotations.Count > 0)
-                {
-                    node.Annotations[0].Style = new TextStyle
+                    node.ExpandIcon = new DiagramExpandIcon()
                     {
-                        Color = "#535353",
-                        Bold = false,
-                        FontSize = 13,
-                        TextAlign = TextAlign.Left ,
+                        Shape = DiagramExpandIcons.Minus,
+                        Width = expandCollapseIconWidth,
+                        Height = node.Height ?? 50,
+                        HorizontalAlignment = HorizontalAlignment.Right,
+                        CornerRadius = nodeCornerRadius,
+                        BorderColor = "#bcbebf",
                     };
+                    node.CollapseIcon = new DiagramCollapseIcon()
+                    {
+                        Shape = DiagramCollapseIcons.Plus,
+                        Width = expandCollapseIconWidth,
+                        Height = node.Height ?? 50,
+                        HorizontalAlignment = HorizontalAlignment.Right,
+                        CornerRadius = nodeCornerRadius,
+                        BorderColor = "#bcbebf",
+                    };                
                 }
                 node.Shape = new BasicShape { Shape = NodeBasicShapes.Rectangle, Type = NodeShapes.Basic , CornerRadius = nodeCornerRadius};
             }
@@ -334,11 +370,10 @@ IsModal="true"
             await diagram.DoLayoutAsync();
 
             // Fit the diagram to the page
-            diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content });
+            diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
         }
         catch (Exception ex)
         {
-            await JS.InvokeVoidAsync("showError", "Error parsing JSON: " + ex.Message);
             Console.WriteLine($"Error parsing JSON: {ex.Message}");
         }
     }
@@ -350,7 +385,7 @@ IsModal="true"
         double iconExtra = isLeaf ? 0 : expandCollapseIconWidth;
         double width = result["width"] + iconExtra;
 
-        width = Math.Max(minWidth, width);
+        width = Math.Max(minWidth, width);  
 
         return (width, result["height"]);
     }
@@ -367,23 +402,35 @@ IsModal="true"
         {
             // Left-align the first annotation
             var annotation1 = node.Annotations[0];
+            annotation1.ID = "Text";
             annotation1.Offset = new DiagramPoint { X = 0, Y = 0.5 };
             annotation1.HorizontalAlignment = HorizontalAlignment.Left;
             annotation1.Style = new TextStyle
             {
+                Color = "blue",
                 TextAlign = TextAlign.Left,
             };
             annotation1.Margin = new DiagramThickness { Left = padding };
 
             // Right-align the second annotation
             var annotation2 = node.Annotations[1];
+            annotation1.ID = "Count";
             annotation2.Offset = new DiagramPoint { X = 1, Y = 0.5 };
             annotation2.HorizontalAlignment = HorizontalAlignment.Right;
             annotation2.Style = new TextStyle
             {
+                Color = "gray",
                 TextAlign = TextAlign.Right,
             };
             annotation2.Margin = new DiagramThickness { Right = expandCollapseIconWidth + padding };
+        }
+        else if (node.Annotations.Count == 1 && (bool)node.AdditionalInfo["isLeaf"])
+        {
+            var leafNodeAnnotation = node.Annotations[0];
+            leafNodeAnnotation.ID = "LeafNode";
+            leafNodeAnnotation.UseTemplate = true;
+            leafNodeAnnotation.Width = node.Width;
+            leafNodeAnnotation.Height = node.Height;
         }
     }
     #endregion

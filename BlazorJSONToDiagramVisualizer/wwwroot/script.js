@@ -25,7 +25,7 @@ window.getTextSize = (text, font) => {
     context.font = font || "16px Arial";
 
     const lines = text.split("\n");
-    const lineHeight = 20; // pixels per line
+    const lineHeight = 20; // average line height in px
     let maxWidth = 0;
 
     for (let line of lines) {
@@ -35,16 +35,13 @@ window.getTextSize = (text, font) => {
         }
     }
 
-    const height = lines.length * lineHeight + 10; //10px padding
-    maxWidth += 5; //5px padding
+    let width = maxWidth;
+    let height = lines.length * lineHeight;
+
+    height += 10; // Add 10px vertical padding
+
     return {
-        width: maxWidth,
+        width: width,
         height: height
     };
 };
-
-
-window.showError = (message) => {
-    window.alert(message);
-}
-

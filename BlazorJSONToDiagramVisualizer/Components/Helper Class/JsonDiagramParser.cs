@@ -51,7 +51,7 @@ public static class JsonDiagramParser
                 {
                     new ShapeAnnotation { Content = mergedContent }
                 }, 
-                AdditionalInfo = new Dictionary<string, object> { { "isLeaf", false } },
+                AdditionalInfo = new Dictionary<string, object> { { "isLeaf", true } },
                 Data = new { path = "Root", title = mergedContent, actualdata = mergedContent, }
             };
             rootNode.AdditionalInfo.Add("mergedContent", mergedContent);
