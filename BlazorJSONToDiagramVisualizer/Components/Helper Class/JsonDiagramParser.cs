@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using Syncfusion.Blazor.Diagram;
 
@@ -42,6 +43,7 @@ public static class JsonDiagramParser
         {
             rootCreated = true;
             string mergedContent = string.Join("\n", primitives.Select(key => $"{key}: {data.GetProperty(key)}"));
+            rootNodeId = ConvertUnderScoreToPascalCase(rootNodeId);
             var rootNode = new Node
             {
                 ID = rootNodeId,
@@ -72,7 +74,7 @@ public static class JsonDiagramParser
             {
                 annotations.Add(new ShapeAnnotation { Content = "{" + childCount + "}" });
             }
-
+            nodeId = ConvertUnderScoreToPascalCase(nodeId);
             var childNode = new Node
             {
                 ID = nodeId,
@@ -118,6 +120,7 @@ public static class JsonDiagramParser
                 if (item.ValueKind == JsonValueKind.Null)
                     continue;
                 string nodeId = $"{parentId}-{index}";
+                nodeId = ConvertUnderScoreToPascalCase(nodeId);
                 // For objects within an array, recursively process
                 if (item.ValueKind == JsonValueKind.Object)
                 {
@@ -160,6 +163,7 @@ public static class JsonDiagramParser
                     foreach (var child in children)
                     {
                         string childId = $"{nodeId}-{child.Name}";
+                        childId = ConvertUnderScoreToPascalCase(childId);
                         string childPath = $"{parentPath}/{keyName}[{index}].{child.Name}";
                         string label = child.Name;
 
@@ -237,6 +241,7 @@ public static class JsonDiagramParser
         {
             string mergedContent = string.Join("\n", primitives.Select(p => $"{p}: {element.GetProperty(p)}"));
             string leafId = parentId + "-leaf";
+            leafId = ConvertUnderScoreToPascalCase(leafId);
             var leafNode = new Node
             {
                 ID = leafId,
@@ -263,6 +268,7 @@ public static class JsonDiagramParser
         foreach (var prop in nonLeaf)
         {
             string childId = $"{parentId}-{prop}";
+            childId = ConvertUnderScoreToPascalCase(childId);
             string displayText = element.GetProperty(prop).ValueKind == JsonValueKind.Array
                                     ? $"{prop} [{GetObjectLength(element.GetProperty(prop))}]"
                                     : prop;
@@ -348,6 +354,45 @@ public static class JsonDiagramParser
                 nestedCount++;
         }
         return nestedCount > 0 ? 1 + nestedCount : 1;
+    }
+
+    private static string ConvertUnderScoreToPascalCase(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+        {
+            return input;
+        }
+
+        var words = input.Split('-');
+        var result = new StringBuilder();
+
+        foreach (var word in words)
+        {
+            var subWords = word.Split('_');
+            for (int i = 0; i < subWords.Length; i++)
+            {
+                if (i > 0)
+                {
+                    // Convert to PascalCase
+                    result.Append(char.ToUpper(subWords[i][0]));
+                    result.Append(subWords[i].Substring(1).ToLower());
+                }
+                else
+                {
+                    // Append the original part without modification for the first segment
+                    result.Append(subWords[i]);
+                }
+            }
+
+            result.Append('-');
+        }
+
+        if (result.Length > 0)
+        {
+            result.Length--;
+        }
+
+        return result.ToString();
     }
 }
 
