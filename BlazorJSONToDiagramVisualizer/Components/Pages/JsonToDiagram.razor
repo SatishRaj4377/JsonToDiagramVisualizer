@@ -36,6 +36,8 @@
                 Orientation="LayoutOrientation.LeftToRight"
                 HorizontalSpacing="30"
                 VerticalSpacing="100" />
+                <SnapSettings Constraints="@snapConstraints">
+                </SnapSettings>
                 <DiagramTemplates>
                     <AnnotationTemplate>
                         @if (context is Annotation annotation)
@@ -87,7 +89,7 @@
         <div class="bottom-bar">
             <div class="bottom-bar-content">
                 <span class="status-message">
-                    @if (isJsonValid)
+                    @if (isJsonValidStatus)
                 {
                     <span>
                         <Syncfusion.Blazor.Buttons.SfIcon IconCss="e-icons e-check status-icon" />
@@ -190,6 +192,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private SfDiagramComponent diagram;
     private DiagramObjectCollection<NodeBase> nodeBase = new DiagramObjectCollection<NodeBase>();
     private DiagramData diagramData = new DiagramData();
+    private SnapConstraints snapConstraints = SnapConstraints.ShowLines;
 
     private double expandCollapseIconWidth = 36;
     private int nodeCornerRadius = 3;
@@ -202,7 +205,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private bool isNodePathCopied = false;
 
     private int nodeCount => diagramData.Nodes.Count;
-    private bool isJsonValid = true;
+    private bool isJsonValidStatus = true;
     #endregion
 
     #region Splitter
@@ -284,6 +287,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
             AutomaticLayout = true,
             Language = "json",
             Value = jsonValue,
+            FormatOnPaste = true, 
+            Placeholder = "Start Typing...",
             Minimap = new EditorMinimapOptions
             {
                 Enabled = false
@@ -300,7 +305,10 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private async Task OnModelContentChange(ModelContentChangedEvent e)
     {
         jsonValue = await monacoEditor.GetValue();
-        await ParseAndUpdateDiagram();
+        if (string.IsNullOrEmpty(jsonValue.Trim()))
+            isJsonValidStatus = true;
+        else
+            await ParseAndUpdateDiagram();
     }
 
     #endregion
@@ -314,8 +322,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task OnNodeCreating(IDiagramObject obj)
     {
-        Node node = obj as Node;
-        if (node != null)
+        if (obj is Node node)
         {
             node.Style = new ShapeStyle { Fill = "#ffffff", StrokeColor = "#bcbebf", StrokeWidth = 1 };
 
@@ -359,8 +366,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private void OnConnectorCreating(IDiagramObject obj)
     {
-        Connector connector = obj as Connector;
-        if (connector != null)
+        if (obj is Connector connector)
         {
             connector.Type = ConnectorSegmentType.Orthogonal;
             connector.CornerRadius = 15;
@@ -381,7 +387,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 diagramData = JsonDiagramParser.ProcessData(doc.RootElement);
             }
 
-            isJsonValid = true;
+            isJsonValidStatus = true;
 
             // Clear existing nodes and connectors
             diagram.Clear();
@@ -407,7 +413,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
         }
         catch (Exception ex)
         {
-            isJsonValid = false;
+            isJsonValidStatus = false;
             Console.WriteLine($"Error parsing JSON: {ex.Message}");
         }
     }
@@ -640,6 +646,22 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task HandleNavBarAction(string action)
     {
+        switch (action)
+        {
+            case "import-json":
+            case "export-json":
+                await HandleImportExport(action);
+                break;
+            case "toggle-grid":
+                ToggleGridLines();
+                break;
+
+        }
+
+    }
+
+    private async Task HandleImportExport(string action)
+    {
         if (action == "import-json")
         {
             try
@@ -666,12 +688,19 @@ IsModal="true" @bind-Visible="isDialogVisible">
         }
     }
 
-
     [JSInvokable]
     public async Task ReceiveImportedJson(string jsonContent)
     {
         jsonValue = jsonContent;
         await monacoEditor.SetValue(jsonContent);
+    }
+
+    private void ToggleGridLines()
+    {
+        if (snapConstraints == SnapConstraints.ShowLines)
+            snapConstraints = SnapConstraints.None;
+        else
+            snapConstraints = SnapConstraints.ShowLines;
     }
     #endregion
 }
