@@ -193,7 +193,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private DiagramObjectCollection<NodeBase> nodeBase = new DiagramObjectCollection<NodeBase>();
     private DiagramData diagramData = new DiagramData();
     private SnapConstraints snapConstraints = SnapConstraints.ShowLines;
-    private bool showItemCount = true;
+    private bool showChildCount = true;
+    private bool showExpandCollapseIcon = true;
 
     private double expandCollapseIconWidth = 36;
     private int nodeCornerRadius = 3;
@@ -339,7 +340,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 node.Width = width;
                 node.Height = height;
                 AdjustNodeAnnotationPosition(node);
-                if (!(bool)node?.AdditionalInfo["isLeaf"])
+                if (!(bool)node?.AdditionalInfo["isLeaf"] & showExpandCollapseIcon)
                 {
                     node.ExpandIcon = new DiagramExpandIcon()
                         {
@@ -359,6 +360,11 @@ IsModal="true" @bind-Visible="isDialogVisible">
                             CornerRadius = nodeCornerRadius,
                             BorderColor = "#bcbebf",
                         };
+                }
+                else
+                {
+                    node.ExpandIcon = null;
+                    node.CollapseIcon = null;
                 }
                 node.Shape = new BasicShape { Shape = NodeBasicShapes.Rectangle, Type = NodeShapes.Basic, CornerRadius = nodeCornerRadius };
             }
@@ -421,14 +427,14 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task<(double width, double height)> GetNodeSizeAsync(string content, bool isLeaf, double minWidth)
     {
-        if (!isLeaf && !showItemCount)
+        if (!isLeaf && !showChildCount)
         {
             content = RemoveCountValue(content);
         }
 
         var result = await JS.InvokeAsync<Dictionary<string, double>>("getTextSize", content);
 
-        double iconExtra = isLeaf ? 0 : expandCollapseIconWidth;
+        double iconExtra = isLeaf ? 0 : showExpandCollapseIcon ? expandCollapseIconWidth : 0;
         double width = result["width"] + iconExtra;
 
         width = Math.Max(minWidth, width);  
@@ -470,7 +476,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 TextAlign = TextAlign.Right,
             };
 
-            if (showItemCount)
+            if (showChildCount)
             {
                 countAnnotation.Visibility = true;
 
@@ -482,7 +488,10 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 // Right-align the second annotation
                 countAnnotation.Offset = new DiagramPoint { X = 1, Y = 0.5 };
                 countAnnotation.HorizontalAlignment = HorizontalAlignment.Right;
-                countAnnotation.Margin = new DiagramThickness { Right = expandCollapseIconWidth + padding };
+                countAnnotation.Margin = new DiagramThickness 
+                { 
+                    Right = (showExpandCollapseIcon ? expandCollapseIconWidth : 0) + padding 
+                };
             }
             else
             {
@@ -687,6 +696,9 @@ IsModal="true" @bind-Visible="isDialogVisible">
             case "toggle-count":
                 await ToggleItemCount();
                 break;
+            case "toggle-expand":
+                await ToggleExpandCollapse();
+                break;
 
         }
 
@@ -737,7 +749,14 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task ToggleItemCount()
     {
-        showItemCount = !showItemCount;
+        showChildCount = !showChildCount;
+        await diagram.RefreshDataSourceAsync();
+        await diagram.DoLayoutAsync();
+    }
+
+    private async Task ToggleExpandCollapse()
+    {
+        showExpandCollapseIcon = !showExpandCollapseIcon;
         await diagram.RefreshDataSourceAsync();
         await diagram.DoLayoutAsync();
     }
