@@ -193,6 +193,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private DiagramObjectCollection<NodeBase> nodeBase = new DiagramObjectCollection<NodeBase>();
     private DiagramData diagramData = new DiagramData();
     private SnapConstraints snapConstraints = SnapConstraints.ShowLines;
+    private bool showItemCount = true;
 
     private double expandCollapseIconWidth = 36;
     private int nodeCornerRadius = 3;
@@ -420,6 +421,11 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task<(double width, double height)> GetNodeSizeAsync(string content, bool isLeaf, double minWidth)
     {
+        if (!isLeaf && !showItemCount)
+        {
+            content = RemoveCountValue(content);
+        }
+
         var result = await JS.InvokeAsync<Dictionary<string, double>>("getTextSize", content);
 
         double iconExtra = isLeaf ? 0 : expandCollapseIconWidth;
@@ -428,6 +434,14 @@ IsModal="true" @bind-Visible="isDialogVisible">
         width = Math.Max(minWidth, width);  
 
         return (width, result["height"]);
+    }
+
+    private string RemoveCountValue(string input)
+    {
+        // Regular expression to match contents within curly braces including the braces
+        string pattern = @"\{.*?\}";
+        // Replace the matched contents with an empty string
+        return System.Text.RegularExpressions.Regex.Replace(input, pattern, "").Trim();
     }
 
 
@@ -440,29 +454,44 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
         if (node.Annotations.Count >= 2)
         {
-            // Left-align the first annotation
-            var annotation1 = node.Annotations[0];
-            annotation1.ID = "Text";
-            annotation1.Offset = new DiagramPoint { X = 0, Y = 0.5 };
-            annotation1.HorizontalAlignment = HorizontalAlignment.Left;
-            annotation1.Style = new TextStyle
+            var keyAnnotation = node.Annotations[0];
+            keyAnnotation.ID = "Text";
+            keyAnnotation.Style = new TextStyle
             {
                 Color = "blue",
                 TextAlign = TextAlign.Left,
             };
-            annotation1.Margin = new DiagramThickness { Left = padding };
 
-            // Right-align the second annotation
-            var annotation2 = node.Annotations[1];
-            annotation1.ID = "Count";
-            annotation2.Offset = new DiagramPoint { X = 1, Y = 0.5 };
-            annotation2.HorizontalAlignment = HorizontalAlignment.Right;
-            annotation2.Style = new TextStyle
+            var countAnnotation = node.Annotations[1];
+            countAnnotation.ID = "Count";
+            countAnnotation.Style = new TextStyle
             {
                 Color = "gray",
                 TextAlign = TextAlign.Right,
             };
-            annotation2.Margin = new DiagramThickness { Right = expandCollapseIconWidth + padding };
+
+            if (showItemCount)
+            {
+                countAnnotation.Visibility = true;
+
+                // Left-align the first annotation
+                keyAnnotation.Offset = new DiagramPoint { X = 0, Y = 0.5 };
+                keyAnnotation.HorizontalAlignment = HorizontalAlignment.Left;
+                keyAnnotation.Margin = new DiagramThickness { Left = padding };
+
+                // Right-align the second annotation
+                countAnnotation.Offset = new DiagramPoint { X = 1, Y = 0.5 };
+                countAnnotation.HorizontalAlignment = HorizontalAlignment.Right;
+                countAnnotation.Margin = new DiagramThickness { Right = expandCollapseIconWidth + padding };
+            }
+            else
+            {
+                keyAnnotation.Offset = new DiagramPoint { X = 0, Y = 0.5 };
+                keyAnnotation.HorizontalAlignment = HorizontalAlignment.Auto;
+                keyAnnotation.Margin = new DiagramThickness { Left = padding };
+                // Hide Count Annotation
+                countAnnotation.Visibility = false;
+            }
         }
         else if (node.Annotations.Count == 1 && (bool)node?.AdditionalInfo["isLeaf"])
         {
@@ -655,6 +684,9 @@ IsModal="true" @bind-Visible="isDialogVisible">
             case "toggle-grid":
                 ToggleGridLines();
                 break;
+            case "toggle-count":
+                await ToggleItemCount();
+                break;
 
         }
 
@@ -702,6 +734,15 @@ IsModal="true" @bind-Visible="isDialogVisible">
         else
             snapConstraints = SnapConstraints.ShowLines;
     }
+
+    private async Task ToggleItemCount()
+    {
+        showItemCount = !showItemCount;
+        await diagram.RefreshDataSourceAsync();
+        await diagram.DoLayoutAsync();
+    }
+
+
     #endregion
 }
 
