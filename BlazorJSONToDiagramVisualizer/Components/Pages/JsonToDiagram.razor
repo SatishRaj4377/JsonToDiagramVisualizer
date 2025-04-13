@@ -4,23 +4,14 @@
 
 <PageTitle>Diagram-JSON</PageTitle>
 
-<!-- Nav Bar -->
 <div id="body">
-    <div class="top-navbar">
-        <div class="top-navbar-content">
-            <div class="logo">{}JSON To Diagram Visualizer</div>
-            <div class="nav-buttons">
-                <button>File</button>
-                <button>View</button>
-                <button>Theme</button>
-            </div>
-        </div>
-    </div>
+    <!-- Nav Bar -->
+    <NavMenu OnNavMenuAction="HandleNavBarAction"/>
 
     <!-- Main -->
     <div class="main-container">
         <!-- Editor Panel -->
-        <div class="left-panel" style="width:@editorPanelWidthPx"> 
+        <div class="left-panel" style="width:@editorPanelWidthPx">
             <StandaloneCodeEditor @ref="@monacoEditor" CssClass="json-editor"
             ConstructionOptions="EditorOptions"
             OnDidChangeModelContent="OnModelContentChange" />
@@ -31,7 +22,7 @@
 
         <!-- Diagram Panel -->
         <div class="right-panel">
-            <SfDiagramComponent @ref="diagram" Click="OnDiagramNodeClick" Width="100%" Height="100%" Created="OnCreated" NodeCreating="OnNodeCreating" ConnectorCreating="OnConnectorCreating">
+            <SfDiagramComponent @ref="diagram" Click="OnDiagramClick" Width="100%" Height="100%" Created="OnCreated" NodeCreating="OnNodeCreating" ConnectorCreating="OnConnectorCreating">
                 <Layout Type="LayoutType.HierarchicalTree" SamePoint="false" Orientation="LayoutOrientation.LeftToRight" HorizontalSpacing="30" VerticalSpacing="100" /> 
                 <DiagramTemplates>
                     <AnnotationTemplate>
@@ -49,7 +40,7 @@
                                             string valueStyle = "color: black;";
                                             bool isString = true;
 
-                                            if (int.TryParse(rawValue, out _))
+                                            if (int.TryParse(rawValue, out _) || double.TryParse(rawValue, out _))
                                             {
                                                 valueStyle = "color: brown;";
                                                 isString = false;
@@ -76,78 +67,76 @@
                             }
                         </AnnotationTemplate>
                     </DiagramTemplates>
-                </SfDiagramComponent>
+            </SfDiagramComponent>
             </div>
         </div>
-    </div>
+</div>
 
-
-    <!-- Popup Dialog -->
-    <SfDialog Width="400px"
-        Header="Node Details"
-        ShowCloseIcon="true" 
-        IsModal="true"
-        @bind-Visible="isDialogVisible">
-        <DialogEvents OnOverlayModalClick="@OverlayClick"></DialogEvents>
-        <DialogTemplates>
-            <Content>
-                <div style="padding: 10px; font-family:Consolas">
-                    <!-- Node Content Section -->
-                    <div style="margin-bottom: 15px;">
-                        <label style="font-weight:bold; font-size:14px; display:block; margin-bottom:5px;">Content</label>
-                        <div style="
-                        background-color:#f8f8f8;
-                        border-radius:5px;
-                        position:relative;
-                        font-size:14px;">
-                            <!-- Scrollable content -->
-                            <div style="padding:10px; overflow-x:auto; white-space:pre;">
-                                @FormatNodeDataInPopup(selectedNodeContent)
-                            </div>
-
-                            <!-- Copy button stays fixed -->
-                            <button @onclick="() => CopyNodeData(selectedNodeContent)" style="
-                            position:absolute;
-                            top:5px;
-                            right:5px;
-                            background:transparent;
-                            border:none;
-                            cursor:pointer;">
-                                <span class="e-icons @(isNodeContentCopied ? "e-check" : "e-copy")"></span>
-                            </button>
+<!-- Popup Dialog -->
+<SfDialog Width="400px"
+    Header="Node Details"
+    ShowCloseIcon="true" 
+    IsModal="true" @bind-Visible="isDialogVisible">
+    <DialogEvents OnOverlayModalClick="() => isDialogVisible = false"></DialogEvents>
+    <DialogTemplates>
+        <Content>
+            <div style="padding: 10px; font-family:Consolas">
+                <!-- Node Content Section -->
+                <div style="margin-bottom: 15px;">
+                    <label style="font-weight:bold; font-size:14px; display:block; margin-bottom:5px;">Content</label>
+                    <div style="
+            background-color:#f8f8f8;
+            border-radius:5px;
+            position:relative;
+            font-size:14px;">
+                        <!-- Scrollable content -->
+                        <div style="padding:10px; overflow-x:auto; white-space:pre;">
+                            @FormatNodeDataInPopup(selectedNodeContent)
                         </div>
 
+                        <!-- Copy button stays fixed -->
+                        <button @onclick="() => CopyNodeData(selectedNodeContent)" style="
+                position:absolute;
+                top:5px;
+                right:5px;
+                background:transparent;
+                border:none;
+                cursor:pointer;">
+                            <span class="e-icons @(isNodeContentCopied ? "e-check" : "e-copy")"></span>
+                        </button>
                     </div>
-                    <!-- JSON Path Section -->
-                    <div>
-                        <label style="font-weight:bold; font-size:14px; display:block; margin-bottom:5px;">JSON Path</label>
-                        <div style="
-                        background-color:#f8f8f8;
-                        border-radius:5px;
-                        position:relative;
-                        font-size:14px;">
-                            <!-- Scrollable content -->
-                            <div style="padding:10px; overflow-x:auto; white-space:pre;">
-                                @FormatNodeDataInPopup(selectedNodePath, true)
-                            </div>
 
-                            <!-- Copy button stays fixed -->
-                            <button @onclick="() => CopyNodeData(selectedNodePath, true)" style="
-                            position:absolute;
-                            top:5px;
-                            right:5px;
-                            background:transparent;
-                            border:none;
-                            cursor:pointer;">
-                                <span class="e-icons @(isNodePathCopied ? "e-check" : "e-copy")"></span>
-                            </button>
-                        </div>
-
-                    </div>
                 </div>
-            </Content>
-        </DialogTemplates>
-    </SfDialog>
+                <!-- JSON Path Section -->
+                <div>
+                    <label style="font-weight:bold; font-size:14px; display:block; margin-bottom:5px;">JSON Path</label>
+                    <div style="
+            background-color:#f8f8f8;
+            border-radius:5px;
+            position:relative;
+            font-size:14px;">
+                        <!-- Scrollable content -->
+                        <div style="padding:10px; overflow-x:auto; white-space:pre;">
+                            @FormatNodeDataInPopup(selectedNodePath, true)
+                        </div>
+
+                        <!-- Copy button stays fixed -->
+                        <button @onclick="() => CopyNodeData(selectedNodePath, true)" style="
+                position:absolute;
+                top:5px;
+                right:5px;
+                background:transparent;
+                border:none;
+                cursor:pointer;">
+                            <span class="e-icons @(isNodePathCopied ? "e-check" : "e-copy")"></span>
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </Content>
+    </DialogTemplates>
+</SfDialog>
 
 @code {
     #region fields
@@ -290,38 +279,41 @@
         if (node != null)
         {
             node.Style = new ShapeStyle { Fill = "#ffffff", StrokeColor = "#bcbebf", StrokeWidth = 1 };
-            var (width, height) = await GetNodeSizeAsync((string)node.AdditionalInfo["mergedContent"], (bool)node.AdditionalInfo["isLeaf"], minNodeWidth);
-            node.Width = width;
-            node.Height = height;
-            AdjustNodeAnnotationPosition(node);
-            if (node.ID != "main-root")
+
+            if (node.ID == "main-root")
             {
-                if (!(bool)node.AdditionalInfo["isLeaf"])
-                {
-                    node.ExpandIcon = new DiagramExpandIcon()
-                    {
-                        Shape = DiagramExpandIcons.Minus,
-                        Width = expandCollapseIconWidth,
-                        Height = node.Height ?? 50,
-                        HorizontalAlignment = HorizontalAlignment.Right,
-                        CornerRadius = nodeCornerRadius,
-                        BorderColor = "#bcbebf",
-                    };
-                    node.CollapseIcon = new DiagramCollapseIcon()
-                    {
-                        Shape = DiagramCollapseIcons.Plus,
-                        Width = expandCollapseIconWidth,
-                        Height = node.Height ?? 50,
-                        HorizontalAlignment = HorizontalAlignment.Right,
-                        CornerRadius = nodeCornerRadius,
-                        BorderColor = "#bcbebf",
-                    };                
-                }
-                node.Shape = new BasicShape { Shape = NodeBasicShapes.Rectangle, Type = NodeShapes.Basic , CornerRadius = nodeCornerRadius};
+                node.Width = 50;
+                node.Height = 50;
+                node.Shape = new BasicShape { Shape = NodeBasicShapes.Ellipse, Type = NodeShapes.Basic };
             }
             else
             {
-                node.Shape = new BasicShape { Shape = NodeBasicShapes.Ellipse, Type = NodeShapes.Basic };
+                var (width, height) = await GetNodeSizeAsync((string)node?.AdditionalInfo["mergedContent"], (bool)node?.AdditionalInfo["isLeaf"], minNodeWidth);
+                node.Width = width;
+                node.Height = height;
+                AdjustNodeAnnotationPosition(node);
+                if (!(bool)node?.AdditionalInfo["isLeaf"])
+                {
+                    node.ExpandIcon = new DiagramExpandIcon()
+                        {
+                            Shape = DiagramExpandIcons.Minus,
+                            Width = expandCollapseIconWidth,
+                            Height = node.Height ?? 50,
+                            HorizontalAlignment = HorizontalAlignment.Right,
+                            CornerRadius = nodeCornerRadius,
+                            BorderColor = "#bcbebf",
+                        };
+                    node.CollapseIcon = new DiagramCollapseIcon()
+                        {
+                            Shape = DiagramCollapseIcons.Plus,
+                            Width = expandCollapseIconWidth,
+                            Height = node.Height ?? 50,
+                            HorizontalAlignment = HorizontalAlignment.Right,
+                            CornerRadius = nodeCornerRadius,
+                            BorderColor = "#bcbebf",
+                        };
+                }
+                node.Shape = new BasicShape { Shape = NodeBasicShapes.Rectangle, Type = NodeShapes.Basic, CornerRadius = nodeCornerRadius };
             }
         }
     }
@@ -424,7 +416,7 @@
             };
             annotation2.Margin = new DiagramThickness { Right = expandCollapseIconWidth + padding };
         }
-        else if (node.Annotations.Count == 1 && (bool)node.AdditionalInfo["isLeaf"])
+        else if (node.Annotations.Count == 1 && (bool)node?.AdditionalInfo["isLeaf"])
         {
             var leafNodeAnnotation = node.Annotations[0];
             leafNodeAnnotation.ID = "LeafNode";
@@ -437,7 +429,7 @@
 
     #region Popup Dialog
 
-    private void OnDiagramNodeClick(ClickEventArgs args)
+    private void OnDiagramClick(ClickEventArgs args)
     {
         if (args.Element is Node node && node.Data != null && args.ActualObject != null)
         {
@@ -457,80 +449,123 @@
         selectedNodePath = nodePath;
         isDialogVisible = true;
     }
-
     private RenderFragment FormatNodeDataInPopup(string content, bool isPath = false) => __builder =>
     {
         if (string.IsNullOrWhiteSpace(content))
             return;
 
-        var lines = content.Split('\n');
+        var formattedLines = FormatJsonLines(content);
         int seq = 0;
-        foreach (var line in lines)
+
+        // If not a json data
+        if (formattedLines.Count == 0)
         {
             __builder.OpenElement(seq++, "div");
-            // Split the line at first colon, if possible.
-            var parts = line.Split(new char[] { ':' }, 2, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length == 2)
+            if (isPath)
             {
-                var key = parts[0].Trim();
-                var value = parts[1].Trim();
+                __builder.AddContent(seq++, AddCurlyBracesAroundRoot(content));
+            }
+            else
+            {
+                __builder.AddAttribute(seq++, "style", "color:#4CAF50;");
+                __builder.AddContent(seq++, '"' +  content + '"');
+            }
+            __builder.CloseElement();
+        }
+        // If a json data
+        else if(formattedLines.Count > 0)
+        {
+            __builder.OpenElement(seq++, "div");
+            __builder.AddContent(seq++, "{");
+            __builder.CloseElement();
 
-                // Render key (purple, bold)
+            foreach (var (key, value, hasComma) in formattedLines)
+            {
+                __builder.OpenElement(seq++, "div");
+
                 __builder.OpenElement(seq++, "span");
-                __builder.AddAttribute(seq++, "style", "color:#9C27B0; font-weight:bold; margin-right:5px;");
+                __builder.AddAttribute(seq++, "style", "color:#9C27B0; font-weight:bold; margin-right:5px; margin-left:14px;");
                 __builder.AddContent(seq++, key);
                 __builder.CloseElement();
 
-                // Render colon separator
                 __builder.OpenElement(seq++, "span");
                 __builder.AddAttribute(seq++, "style", "margin-right:5px;");
                 __builder.AddContent(seq++, ":");
                 __builder.CloseElement();
 
-                // Render value (green)
                 __builder.OpenElement(seq++, "span");
                 __builder.AddAttribute(seq++, "style", "color:#4CAF50;");
                 __builder.AddContent(seq++, value);
                 __builder.CloseElement();
-            }
-            else
-            {
-                // If no colon, render the line in default styling
-                if (isPath)
+
+                if (hasComma)
                 {
-                    __builder.AddContent(seq++, AddCurlyBracesAroundRoot(line));
+                    __builder.AddContent(seq++, ",");
                 }
-                else
-                {
-                    __builder.AddAttribute(seq++, "style", "color:#4CAF50;");
-                    __builder.AddContent(seq++, line);
-                }
+
+                __builder.CloseElement();
             }
+
+            __builder.OpenElement(seq++, "div");
+            __builder.AddContent(seq++, "}");
             __builder.CloseElement();
         }
     };
 
+    private static List<(string, string, bool)> FormatJsonLines(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content))
+            return new List<(string, string, bool)>();
+
+        var lines = content.Split('\n');
+        var formattedLines = new List<(string, string, bool)>();
+
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var parts = lines[i].Split(new char[] { ':' }, 2, StringSplitOptions.RemoveEmptyEntries);
+
+            if (parts.Length == 2)
+            {
+                var key = $"\"{parts[0].Trim()}\"";
+                var value = parts[1].Trim();
+
+                bool isString = !int.TryParse(value, out _) && !double.TryParse(value, out _) && !bool.TryParse(value, out _);
+                if (isString)
+                {
+                    value = $"\"{value}\"";
+                }
+
+                bool isLast = i == lines.Length - 1;
+                formattedLines.Add((key, value, !isLast));
+            }
+        }
+        return formattedLines;
+    }
+
     private string AddCurlyBracesAroundRoot(string input)
     {
-        int firstDotIndex = input.IndexOf('.');
-        if (firstDotIndex == -1)
+        const string rootKeyword = "Root";
+        if (input.StartsWith(rootKeyword))
         {
-            return input;
+            return "{" + rootKeyword + "}" + input.Substring(rootKeyword.Length);
         }
-        string root = input.Substring(0, firstDotIndex);
-        string restOfString = input.Substring(firstDotIndex);
-
-        return $"{{{root}}}{restOfString}";
+        return input;
     }
 
     private async Task CopyNodeData(string data, bool isPath = false)
     {
-        await JS.InvokeVoidAsync("navigator.clipboard.writeText", data);
 
         if (isPath)
-            isNodePathCopied = true;
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", AddCurlyBracesAroundRoot(data));
+            isNodePathCopied = true;        
+        }
         else
+        {
+            var formattedString = GetFormattedJsonString(data);
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", formattedString);        
             isNodeContentCopied = true;
+        }
 
         StateHasChanged();
 
@@ -544,9 +579,56 @@
             isNodeContentCopied = false;
     }
 
-    private void OverlayClick(OverlayModalClickEventArgs args)
+    private static string GetFormattedJsonString(string content)
     {
-        isDialogVisible = false;
+        var formattedLines = FormatJsonLines(content);
+        var result = "{\n";
+
+        foreach (var (key, value, hasComma) in formattedLines)
+        {
+            result += $"    {key}: {value}{(hasComma ? "," : "")}\n";
+        }
+
+        result += "}";
+        return result;
+    }
+    #endregion
+
+    #region NavMenu Actions
+    private async Task HandleNavBarAction(string action)
+    {
+        if (action == "import-json")
+        {
+            try
+            {
+                var objRef = DotNetObjectReference.Create(this);
+                await JS.InvokeVoidAsync("importJsonFromFile", objRef);
+            }
+            catch (JSException ex)
+            {
+                Console.WriteLine("Import failed: " + ex.Message);
+            }
+        }
+        else if (action == "export-json")
+        {
+            try
+            {
+                string jsonToExport = jsonValue ?? "{}";
+                await JS.InvokeVoidAsync("exportJsonFile", jsonToExport, "Diagram.json");
+            }
+            catch (JSException ex)
+            {
+                Console.WriteLine("Export failed: " + ex.Message);
+            }
+        }
+    }
+
+
+    [JSInvokable]
+    public async Task ReceiveImportedJson(string jsonContent)
+    {
+        jsonValue = jsonContent;
+        await monacoEditor.SetValue(jsonContent);
     }
     #endregion
 }

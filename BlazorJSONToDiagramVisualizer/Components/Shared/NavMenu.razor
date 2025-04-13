@@ -1,0 +1,102 @@
+﻿@using Syncfusion.Blazor.Navigations
+@using Syncfusion.Blazor.SplitButtons
+<style>
+    .e-dropdown-btn, .e-dropdown-btn.e-btn {
+        background: transparent;
+        color: black;
+        border: 0;
+    }
+
+    .e-dropdown-btn:focus,
+    .e-dropdown-btn.e-btn:focus,
+    .e-dropdown-btn:active,
+    .e-dropdown-btn.e-btn:active {
+        outline: none;
+        box-shadow: none;
+    }
+
+    .e-dropdown-btn:hover,
+    .e-dropdown-btn.e-btn:hover {
+        background: #f0f0f0;
+    }
+</style>
+<div class="navbar-toolbar-container" style="background-color: transparent; padding: 8px 20px; border-bottom: 1px solid #ccc; display: flex; align-items: center;">
+    <div class="navbar-title" style="font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 8px; margin-right: 40px;">
+        <span class="sf-icon-Code"></span>
+        <span>{ } JSON To Diagram Visualizer</span>
+    </div>
+
+    <SfToolbar>
+        <ToolbarItems>
+            <ToolbarItem>
+                <Template>
+                    <SfDropDownButton CssClass="e-menu-btn" Content="File">
+                        <DropDownMenuItems>
+                            <DropDownMenuItem Text="Import JSON" IconCss="e-icons e-import" Id="import-json" />
+                            <DropDownMenuItem Text="Export JSON" IconCss="e-icons e-export" Id="export-json" />
+                        </DropDownMenuItems>
+                        <DropDownButtonEvents ItemSelected="OnMenuItemClick" />
+                    </SfDropDownButton>
+                </Template>
+            </ToolbarItem>
+
+            <ToolbarItem>
+                <Template>
+                    <SfDropDownButton CssClass="e-menu-btn" Content="View">
+                        <DropDownMenuItems>
+                            <DropDownMenuItem Text="Show Grid" IconCss="@GetIconForView("toggle-grid")" Id="toggle-grid" />
+                            <DropDownMenuItem Text="Item Count" IconCss="@GetIconForView("toggle-count")" Id="toggle-count" />
+                            <DropDownMenuItem Text="Show Expand/Collapse Icon" IconCss="@GetIconForView("toggle-expand")" Id="toggle-expand" />
+                        </DropDownMenuItems>
+                        <DropDownButtonEvents ItemSelected="OnMenuItemClick" />
+                    </SfDropDownButton>
+                </Template>
+            </ToolbarItem>
+
+            <ToolbarItem>
+                <Template>
+                    <SfDropDownButton CssClass="e-menu-btn" Content="Theme">
+                        <DropDownMenuItems>
+                            <DropDownMenuItem Text="Light" IconCss="@GetIconForTheme("theme-light")" Id="theme-light" />
+                            <DropDownMenuItem Text="Dark" IconCss="@GetIconForTheme("theme-dark")" Id="theme-dark" />
+                        </DropDownMenuItems>
+                        <DropDownButtonEvents ItemSelected="OnMenuItemClick" />
+                    </SfDropDownButton>
+                </Template>
+            </ToolbarItem>
+        </ToolbarItems>
+    </SfToolbar>
+</div>
+
+@code {
+    [Parameter] public EventCallback<string> OnNavMenuAction { get; set; }
+
+    private HashSet<string> ToggledViewItems = new() { "toggle-grid", "toggle-count", "toggle-expand" };
+    private string SelectedTheme = "theme-light";
+
+    private async Task OnMenuItemClick(MenuEventArgs args)
+    {
+        if (string.IsNullOrWhiteSpace(args.Item.Id))
+            return;
+
+        // Toggle View Items
+        if (args.Item.Id.StartsWith("toggle-"))
+        {
+            if (ToggledViewItems.Contains(args.Item.Id))
+                ToggledViewItems.Remove(args.Item.Id);
+            else
+                ToggledViewItems.Add(args.Item.Id);
+        }
+
+        // Switch Theme
+        if (args.Item.Id.StartsWith("theme-"))
+        {
+            SelectedTheme = args.Item.Id;
+        }
+
+        await OnNavMenuAction.InvokeAsync(args.Item.Id);
+    }
+
+    private string GetIconForView(string id) => ToggledViewItems.Contains(id) ? "e-icons e-check" : "";
+    private string GetIconForTheme(string id) => SelectedTheme == id ? "e-icons e-check" : "";
+}
