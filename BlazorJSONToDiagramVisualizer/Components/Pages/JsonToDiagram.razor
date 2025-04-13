@@ -4,15 +4,18 @@
 
 <PageTitle>Diagram-JSON</PageTitle>
 
-<div id="body">
-    <!-- Nav Bar -->
-    <NavMenu OnNavMenuAction="HandleNavBarAction"/>
+<div class="app-layout">
+    <!-- Top Navbar -->
+    <div class="navbar">
+        <NavMenu OnNavMenuAction="HandleNavBarAction" />
+    </div>
 
-    <!-- Main -->
-    <div class="main-container">
+    <!-- Main Grid Area -->
+    <div class="main-grid">
         <!-- Editor Panel -->
         <div class="left-panel" style="width:@editorPanelWidthPx">
-            <StandaloneCodeEditor @ref="@monacoEditor" CssClass="json-editor"
+            <StandaloneCodeEditor @ref="@monacoEditor"
+            CssClass="json-editor"
             ConstructionOptions="EditorOptions"
             OnDidChangeModelContent="OnModelContentChange" />
         </div>
@@ -22,8 +25,17 @@
 
         <!-- Diagram Panel -->
         <div class="right-panel">
-            <SfDiagramComponent @ref="diagram" Click="OnDiagramClick" Width="100%" Height="100%" Created="OnCreated" NodeCreating="OnNodeCreating" ConnectorCreating="OnConnectorCreating">
-                <Layout Type="LayoutType.HierarchicalTree" SamePoint="false" Orientation="LayoutOrientation.LeftToRight" HorizontalSpacing="30" VerticalSpacing="100" /> 
+            <SfDiagramComponent @ref="diagram"
+            Click="OnDiagramClick"
+            Width="100%" Height="100%"
+            Created="OnCreated"
+            NodeCreating="OnNodeCreating"
+            ConnectorCreating="OnConnectorCreating">
+                <Layout Type="LayoutType.HierarchicalTree"
+                SamePoint="false"
+                Orientation="LayoutOrientation.LeftToRight"
+                HorizontalSpacing="30"
+                VerticalSpacing="100" />
                 <DiagramTemplates>
                     <AnnotationTemplate>
                         @if (context is Annotation annotation)
@@ -54,11 +66,11 @@
 
                                             string displayValue = isString && !string.IsNullOrWhiteSpace(rawValue) ? $"\"{rawValue}\"" : rawValue;
 
-                                            <div style="display: flex; justify-content: center; align-items: center; padding-top: 2px; padding-bottom: 3px;">
+                                            <div style="display: flex; justify-content: center; align-items: center; padding-top: 3px; padding-bottom: 3px;">
                                                 <span style="color: blue;">@key</span>
                                                 @if (!string.IsNullOrWhiteSpace(displayValue))
                                                 {
-                                                    <span style="@valueStyle; line-height:1.4">&nbsp;@displayValue</span>
+                                                    <span style="@valueStyle">&nbsp;@displayValue</span>
                                                 }
                                             </div>
                                         }
@@ -67,16 +79,41 @@
                             }
                         </AnnotationTemplate>
                     </DiagramTemplates>
-            </SfDiagramComponent>
+                </SfDiagramComponent>
             </div>
         </div>
+
+        <!-- Bottom Bar -->
+        <div class="bottom-bar">
+            <div class="bottom-bar-content">
+                <span class="status-message">
+                    @if (isJsonValid)
+                {
+                    <span>
+                        <Syncfusion.Blazor.Buttons.SfIcon IconCss="e-icons e-check status-icon" />
+                        Valid JSON
+                    </span>
+                }
+                else
+                {
+                    <span class="invalid-json">
+                        <Syncfusion.Blazor.Buttons.SfIcon IconCss="e-icons e-close status-icon" />
+                        Invalid JSON
+                    </span>
+                }
+            </span>
+            <span class="bottom-right">Nodes: @nodeCount</span>
+        </div>
+    </div>
+
 </div>
+
 
 <!-- Popup Dialog -->
 <SfDialog Width="400px"
-    Header="Node Details"
-    ShowCloseIcon="true" 
-    IsModal="true" @bind-Visible="isDialogVisible">
+Header="Node Details"
+ShowCloseIcon="true" 
+IsModal="true" @bind-Visible="isDialogVisible">
     <DialogEvents OnOverlayModalClick="() => isDialogVisible = false"></DialogEvents>
     <DialogTemplates>
         <Content>
@@ -85,10 +122,10 @@
                 <div style="margin-bottom: 15px;">
                     <label style="font-weight:bold; font-size:14px; display:block; margin-bottom:5px;">Content</label>
                     <div style="
-            background-color:#f8f8f8;
-            border-radius:5px;
-            position:relative;
-            font-size:14px;">
+                        background-color:#f8f8f8;
+                        border-radius:5px;
+                        position:relative;
+                        font-size:14px;">
                         <!-- Scrollable content -->
                         <div style="padding:10px; overflow-x:auto; white-space:pre;">
                             @FormatNodeDataInPopup(selectedNodeContent)
@@ -96,12 +133,12 @@
 
                         <!-- Copy button stays fixed -->
                         <button @onclick="() => CopyNodeData(selectedNodeContent)" style="
-                position:absolute;
-                top:5px;
-                right:5px;
-                background:transparent;
-                border:none;
-                cursor:pointer;">
+                            position:absolute;
+                            top:5px;
+                            right:5px;
+                            background:transparent;
+                            border:none;
+                            cursor:pointer;">
                             <span class="e-icons @(isNodeContentCopied ? "e-check" : "e-copy")"></span>
                         </button>
                     </div>
@@ -111,10 +148,10 @@
                 <div>
                     <label style="font-weight:bold; font-size:14px; display:block; margin-bottom:5px;">JSON Path</label>
                     <div style="
-            background-color:#f8f8f8;
-            border-radius:5px;
-            position:relative;
-            font-size:14px;">
+                        background-color:#f8f8f8;
+                        border-radius:5px;
+                        position:relative;
+                        font-size:14px;">
                         <!-- Scrollable content -->
                         <div style="padding:10px; overflow-x:auto; white-space:pre;">
                             @FormatNodeDataInPopup(selectedNodePath, true)
@@ -122,12 +159,12 @@
 
                         <!-- Copy button stays fixed -->
                         <button @onclick="() => CopyNodeData(selectedNodePath, true)" style="
-                position:absolute;
-                top:5px;
-                right:5px;
-                background:transparent;
-                border:none;
-                cursor:pointer;">
+                            position:absolute;
+                            top:5px;
+                            right:5px;
+                            background:transparent;
+                            border:none;
+                            cursor:pointer;">
                             <span class="e-icons @(isNodePathCopied ? "e-check" : "e-copy")"></span>
                         </button>
                     </div>
@@ -164,6 +201,8 @@
     private bool isNodeContentCopied = false;
     private bool isNodePathCopied = false;
 
+    private int nodeCount => diagramData.Nodes.Count;
+    private bool isJsonValid = true;
     #endregion
 
     #region Splitter
@@ -342,6 +381,8 @@
                 diagramData = JsonDiagramParser.ProcessData(doc.RootElement);
             }
 
+            isJsonValid = true;
+
             // Clear existing nodes and connectors
             diagram.Clear();
             nodeBase.Clear();
@@ -366,6 +407,7 @@
         }
         catch (Exception ex)
         {
+            isJsonValid = false;
             Console.WriteLine($"Error parsing JSON: {ex.Message}");
         }
     }
@@ -595,6 +637,7 @@
     #endregion
 
     #region NavMenu Actions
+
     private async Task HandleNavBarAction(string action)
     {
         if (action == "import-json")
@@ -634,7 +677,97 @@
 }
 
 <style>
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        font-family: Consolas,"Segoe UI", Tahoma, sans-serif;
+    }
+
+    .app-layout {
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        height: 100vh;
+        width: 100vw;
+    }
+
+    /* Top Nav */
+    .navbar {
+        height: 48px;
+        background-color: #f8f8f8;
+        z-index: 10;
+    }
+
+    /* Main Grid */
+    .main-grid {
+        display: grid;
+        grid-template-columns: auto 6px 1fr;
+        overflow: hidden;
+    }
+
+    /* Editor */
+    .left-panel {
+        height: 100%;
+        overflow: hidden;
+    }
+
     .json-editor {
         height: 100%;
     }
+
+    /* Splitter */
+    .splitter {
+        background-color: #ddd;
+        cursor: col-resize;
+        height: 100%;
+    }
+
+    /* Diagram */
+    .right-panel {
+        height: 100%;
+        overflow: hidden;
+    }
+
+    /* Bottom Bar */
+    .bottom-bar {
+        height: 26px;
+        background-color: #f1f1f1;
+        border-top: 1px solid #ccc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .bottom-bar-content {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        font-size: 13px;
+        color: #333;
+        gap: 20px;
+    }
+
+    .bottom-right {
+        margin-left: auto;
+    }
+
+    .status-message {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 14px;
+    }
+
+    .status-icon {
+        font-size: 16px;
+        vertical-align: middle;
+        margin-right: -3px;
+    }
+
+    .invalid-json {
+        color: red;
+    }
+
 </style>
