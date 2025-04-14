@@ -931,10 +931,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 break;
         }
     }
-    private string CurrentSearchText = "";
-    private List<Node> MatchingNodes = new List<Node>();
 
-    // Define your theme colors (or get from a theme service)
     private static class ThemeColors
     {
         public const string NodeStroke = "#cccccc";
@@ -942,18 +939,18 @@ IsModal="true" @bind-Visible="isDialogVisible">
         public const string HighlightStroke = "lightgreen";
         public const string HighlightFill = "#c6f3d6";
     }
+
     private async Task SearchNodes(string searchText)
     {
         searchText = searchText.Trim().ToLower();
+        var matchingNodes = new List<Node>();
         if (string.IsNullOrWhiteSpace(searchText))
         {
             await ResetAllNodeStyles();
             return;
         }
 
-        CurrentSearchText = searchText;
-        MatchingNodes.Clear();
-
+        matchingNodes.Clear();
         diagram.ClearSelection();
 
         foreach (var node in diagram.Nodes)
@@ -965,12 +962,12 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
             if (!string.IsNullOrEmpty(nodeText) && nodeText.Contains(searchText))
             {
-                MatchingNodes.Add(node);
+                matchingNodes.Add(node);
             }
         }
 
         // Highlight matching nodes
-        foreach (var node in MatchingNodes)
+        foreach (var node in matchingNodes)
         {
             string contentId = node.ID + "_content";
             await SetNodeStyle(contentId, ThemeColors.HighlightStroke, ThemeColors.HighlightFill, "2");
