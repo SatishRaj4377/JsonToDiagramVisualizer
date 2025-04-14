@@ -92,6 +92,9 @@
 
                     </DiagramTemplates>
                 </SfDiagramComponent>
+
+                <DiagramToolBar OnToolBarAction="HandleToolBarAction" />
+
             </div>
         </div>
 
@@ -902,6 +905,96 @@ IsModal="true" @bind-Visible="isDialogVisible">
         await diagram.RefreshDataSourceAsync();
         await diagram.DoLayoutAsync();
     }
+    #endregion
+
+
+    #region Toolbar Actions
+
+    private async Task HandleToolBarAction(string action)
+    {
+        switch (action)
+        {
+            case "reset":
+                diagram.ResetZoom();
+                break;
+            case "fitToPage":
+                diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
+                break;
+            case "zoomIn":
+                diagram.Zoom(1.2, new DiagramPoint() { X = 100, Y = 100 });
+                break;
+            case "zoomOut":
+                diagram.Zoom(1 / 1.2, new DiagramPoint() { X = 100, Y = 100 });
+                break;
+            default:
+                await SearchNodes(action.Replace("search:", ""));
+                break;
+        }
+    }
+    private string CurrentSearchText = "";
+    private List<Node> MatchingNodes = new List<Node>();
+
+    // Define your theme colors (or get from a theme service)
+    private static class ThemeColors
+    {
+        public const string NodeStroke = "#cccccc";
+        public const string NodeFill = "#ffffff";
+        public const string HighlightStroke = "lightgreen";
+        public const string HighlightFill = "#c6f3d6";
+    }
+    private async Task SearchNodes(string searchText)
+    {
+        searchText = searchText.Trim().ToLower();
+        if (string.IsNullOrWhiteSpace(searchText))
+        {
+            await ResetAllNodeStyles();
+            return;
+        }
+
+        CurrentSearchText = searchText;
+        MatchingNodes.Clear();
+
+        diagram.ClearSelection();
+
+        foreach (var node in diagram.Nodes)
+        {
+            string nodeText = node.Data.GetType().GetProperty("actualdata")?.GetValue(node.Data, null)?.ToString()?.ToLower();
+            string contentId = node.ID + "_content";
+
+            await SetNodeStyle(contentId, ThemeColors.NodeStroke, ThemeColors.NodeFill, "1.5");
+
+            if (!string.IsNullOrEmpty(nodeText) && nodeText.Contains(searchText))
+            {
+                MatchingNodes.Add(node);
+            }
+        }
+
+        // Highlight matching nodes
+        foreach (var node in MatchingNodes)
+        {
+            string contentId = node.ID + "_content";
+            await SetNodeStyle(contentId, ThemeColors.HighlightStroke, ThemeColors.HighlightFill, "2");
+        }
+
+    }
+
+    private async Task SetNodeStyle(string domId, string strokeColor, string fillColor, string strokeWidth)
+    {
+        if (!string.IsNullOrEmpty(domId))
+        {
+            await JS.InvokeVoidAsync("setNodeStyle", domId, strokeColor, fillColor, strokeWidth);
+        }
+    }
+
+    private async Task ResetAllNodeStyles()
+    {
+        foreach (var node in diagram.Nodes)
+        {
+            string contentId = node.ID + "_content";
+            await SetNodeStyle(contentId, ThemeColors.NodeStroke, ThemeColors.NodeFill, "1.5");
+        }
+    }
+
     #endregion
 }
 

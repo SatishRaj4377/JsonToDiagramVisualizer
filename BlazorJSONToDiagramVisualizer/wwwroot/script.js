@@ -93,3 +93,12 @@ window.importJsonFromFile = (dotNetHelper) => {
     input.click();
     document.body.removeChild(input);
 };
+
+window.setNodeStyle = function (domId, stroke, fill, strokeWidth) {
+    const element = document.getElementById(domId);
+    if (element) {
+        element.setAttribute("stroke", stroke);
+        element.setAttribute("fill", fill);
+        element.setAttribute("stroke-width", strokeWidth);
+    }
+};
