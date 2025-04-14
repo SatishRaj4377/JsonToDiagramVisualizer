@@ -124,7 +124,7 @@
 </div>
 
 
-<!-- Popup Dialog -->
+<!-- Node Data Popup Dialog -->
 <SfDialog Width="400px"
 Header="Node Details"
 ShowCloseIcon="true" 
@@ -190,6 +190,9 @@ IsModal="true" @bind-Visible="isDialogVisible">
     </DialogTemplates>
 </SfDialog>
 
+<!-- Export as Image Popup Dialog -->
+<ExportImageDialog @ref="exportDialog" OnExport="HandleExportDiagramAsImage" />
+
 @code {
     #region fields
 
@@ -230,8 +233,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private int nodeCount => diagramData.Nodes.Count;
     private bool isJsonValidStatus = true;
-
     private bool isGraphCollapsed = false;
+    private ExportImageDialog exportDialog;
     #endregion
 
     #region Splitter
@@ -828,7 +831,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
         switch (action)
         {
             case "export-image":
-                // ExportDiagramAsImage();
+                exportDialog.Show();
                 break;
             case "rotate-layout":
                 await RotateDiagramLayout();
@@ -836,6 +839,22 @@ IsModal="true" @bind-Visible="isDialogVisible">
             case "expand-graph":
                 await ToggleGraphCollapse();
                 break;
+        }
+    }
+
+    private async Task HandleExportDiagramAsImage()
+    {
+        var fileName = exportDialog.FileName;
+        var format = exportDialog.ExportMode;
+        DiagramExportSettings exportSettings = new DiagramExportSettings()
+        {
+            Region = DiagramPrintExportRegion.PageSettings,
+        };
+        if (!string.IsNullOrWhiteSpace(fileName) && Enum.TryParse(typeof(DiagramExportFormat), format, out var result))
+        {
+            DiagramExportFormat exportFormat = (DiagramExportFormat)result;
+            await diagram.ExportAsync(fileName, exportFormat, exportSettings);
+            exportDialog.Hide();
         }
     }
 
@@ -1037,7 +1056,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     /* Splitter */
     .splitter {
-        background-color: #ddd;
+        background-color: transparent;
         cursor: col-resize;
         height: 100%;
     }

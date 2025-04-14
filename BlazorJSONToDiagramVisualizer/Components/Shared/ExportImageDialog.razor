@@ -1,0 +1,82 @@
+﻿@using Syncfusion.Blazor.Popups
+@using Syncfusion.Blazor.Inputs
+@using Syncfusion.Blazor.Buttons
+
+<SfDialog @ref="DialogInstance"
+Width="300px"
+Header="Download Image"
+IsModal="true"
+ShowCloseIcon="true"
+Visible="@IsVisible">
+    <DialogEvents OnOverlayModalClick="() => IsVisible = false"></DialogEvents>
+    <div>
+        <p>File Name</p>
+        <SfTextBox CssClass="e-outline"
+        @bind-Value="FileName" Placeholder="Enter file name" />
+    </div>
+
+    <div style="margin-top: 15px;">
+        <p>Select Export Mode:</p>
+        <div style="padding: 10px 0; display: flex; gap: 10px;">
+            <SfRadioButton Label="PNG"
+            Name="exportMode"
+            Value="PNG"
+            TChecked="string"
+            @bind-Checked="ExportMode">
+            </SfRadioButton>
+
+            <SfRadioButton Label="JPEG"
+            Name="exportMode"
+            Value="JPEG"
+            TChecked="string"
+            @bind-Checked="ExportMode">
+            </SfRadioButton>
+
+            <SfRadioButton Label="SVG"
+            Name="exportMode"
+            Value="SVG"
+            TChecked="string"
+            @bind-Checked="ExportMode">
+            </SfRadioButton>
+        </div>
+    </div>
+    <DialogButtons>
+        <DialogButton Content="Close" IsPrimary="false" OnClick="@CloseDialog" />
+        <DialogButton Content="Export" IsPrimary="true" OnClick="@ExportClicked" />
+    </DialogButtons>
+</SfDialog>
+
+
+@code {
+    private SfDialog DialogInstance;
+
+    [Parameter] public EventCallback OnExport { get; set; }
+
+    public string FileName { get; set; } = "";
+    public string ExportMode { get; set; } = "PNG";
+
+    public bool IsVisible { get; set; }
+
+    public void Show()
+    {
+        IsVisible = true;
+        StateHasChanged();
+    }
+    public void Hide()
+    {
+        IsVisible = false;
+        StateHasChanged();
+    }
+
+    private async Task ExportClicked()
+    {
+        await OnExport.InvokeAsync(null);
+        Hide();
+    }
+
+    private void CloseDialog()
+    {
+        Hide();
+    }
+}
+
