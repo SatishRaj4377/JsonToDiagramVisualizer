@@ -48,41 +48,48 @@
                                 if (annotation.UseTemplate && annotation.ID.Contains("LeafNode"))
                                 {
                                     string[] lines = annotation.Content?.ToString()?.Split('\n', StringSplitOptions.RemoveEmptyEntries) ?? new string[0];
-                                    <div style="height: 100%; width: 100%; display: flex; flex-direction: column; justify-content: center; align-items: start; margin-left: 10px">
-                                        @foreach (var line in lines)
-                                        {
-                                            var colonIndex = line.IndexOf(':');
-                                            var key = colonIndex >= 0 ? line.Substring(0, colonIndex + 1) : line;
-                                            var rawValue = colonIndex >= 0 ? line.Substring(colonIndex + 1).Trim() : "";
-                                            string valueStyle = "color: black;";
-                                            bool isString = true;
-
-                                            if (int.TryParse(rawValue, out _) || double.TryParse(rawValue, out _))
+                                    <div style="height: 100%; width: 100%; display: flex; justify-content: center; align-items: center;">
+                                        <!-- Inner container is left-aligned, but centered inside the node -->
+                                        <div style="display: flex; flex-direction: column; align-items: flex-start;">
+                                            @foreach (var line in lines)
                                             {
-                                                valueStyle = "color: brown;";
-                                                isString = false;
-                                            }
-                                            else if (bool.TryParse(rawValue, out bool boolVal))
-                                            {
-                                                valueStyle = "color: green;";
-                                                rawValue = boolVal.ToString().ToLower();
-                                                isString = false;
-                                            }
+                                                var colonIndex = line.IndexOf(':');
+                                                var key = colonIndex >= 0 ? line.Substring(0, colonIndex + 1) : line;
+                                                var rawValue = colonIndex >= 0 ? line.Substring(colonIndex + 1).Trim() : "";
+                                                string valueStyle = "color: black;";
+                                                bool isString = true;
 
-                                            string displayValue = isString && !string.IsNullOrWhiteSpace(rawValue) ? $"\"{rawValue}\"" : rawValue;
-
-                                            <div style="display: flex; justify-content: center; align-items: center; padding-top: 3px; padding-bottom: 3px;">
-                                                <span style="color: blue;">@key</span>
-                                                @if (!string.IsNullOrWhiteSpace(displayValue))
+                                                if (int.TryParse(rawValue, out _) || double.TryParse(rawValue, out _))
                                                 {
-                                                    <span style="@valueStyle">&nbsp;@displayValue</span>
+                                                    valueStyle = "color: brown;";
+                                                    isString = false;
                                                 }
-                                            </div>
-                                        }
+                                                else if (bool.TryParse(rawValue, out bool boolVal))
+                                                {
+                                                    if (boolVal)
+                                                        valueStyle = "color: green;";
+                                                    else
+                                                        valueStyle = "color: red;";
+                                                    rawValue = boolVal.ToString().ToLower();
+                                                    isString = false;
+                                                }
+
+                                                string displayValue = isString && !string.IsNullOrWhiteSpace(rawValue) ? $"\"{rawValue}\"" : rawValue;
+
+                                                <div style="display: flex; align-items: center; padding: 3px 0;">
+                                                    <span style="color: blue;">@key</span>
+                                                    @if (!string.IsNullOrWhiteSpace(displayValue))
+                                                    {
+                                                        <span style="@valueStyle">&nbsp;@displayValue</span>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
                                     </div>
                                 }
                             }
                         </AnnotationTemplate>
+
                     </DiagramTemplates>
                 </SfDiagramComponent>
             </div>
@@ -210,7 +217,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private double expandCollapseIconWidth = 36;
     private int nodeCornerRadius = 3;
-    private double minNodeWidth = 120;
+    private double minNodeWidth = 100;
 
     private bool isDialogVisible = false;
     private string selectedNodePath = "";
@@ -468,9 +475,10 @@ IsModal="true" @bind-Visible="isDialogVisible">
             content = RemoveCountValue(content);
         }
 
+        double iconExtra = isLeaf ? 0 : showExpandCollapseIcon ? expandCollapseIconWidth : 0;
+
         var result = await JS.InvokeAsync<Dictionary<string, double>>("getTextSize", content);
 
-        double iconExtra = isLeaf ? 0 : showExpandCollapseIcon ? expandCollapseIconWidth : 0;
         double width = result["width"] + iconExtra;
 
         width = Math.Max(minWidth, width);  
@@ -651,10 +659,23 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 var key = $"\"{parts[0].Trim()}\"";
                 var value = parts[1].Trim();
 
-                bool isString = !int.TryParse(value, out _) && !double.TryParse(value, out _) && !bool.TryParse(value, out _);
-                if (isString)
+                bool isString = false;
+                bool boolResult;
+
+                if (bool.TryParse(value, out boolResult))
                 {
-                    value = $"\"{value}\"";
+                    // Convert boolean value to lowercase string equivalent
+                    value = boolResult.ToString().ToLower();
+                }
+                else
+                {
+                    // Check if the value is not an int or double, thereby treating it as a string
+                    isString = !int.TryParse(value, out _) && !double.TryParse(value, out _);
+
+                    if (isString)
+                    {
+                        value = $"\"{value}\"";
+                    }
                 }
 
                 bool isLast = i == lines.Length - 1;
