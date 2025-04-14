@@ -36,10 +36,10 @@
             ConnectorCreating="OnConnectorCreating">
                 <Layout Type="LayoutType.HierarchicalTree"
                 SamePoint="false"
-                Orientation="LayoutOrientation.LeftToRight"
+                @bind-Orientation ="@layoutOrientation"
                 HorizontalSpacing="30"
                 VerticalSpacing="100" />
-                <SnapSettings Constraints="@snapConstraints">
+                <SnapSettings @bind-Constraints ="@snapConstraints">
                 </SnapSettings>
                 <DiagramTemplates>
                     <AnnotationTemplate>
@@ -198,6 +198,15 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private SnapConstraints snapConstraints = SnapConstraints.ShowLines;
     private bool showChildCount = true;
     private bool showExpandCollapseIcon = true;
+    private LayoutOrientation[] orientationsList =
+    {
+        LayoutOrientation.LeftToRight,
+        LayoutOrientation.TopToBottom,
+        LayoutOrientation.RightToLeft,
+        LayoutOrientation.BottomToTop
+    };
+    private int currentOrientationIndex = 0;
+    private LayoutOrientation layoutOrientation = LayoutOrientation.LeftToRight;
 
     private double expandCollapseIconWidth = 36;
     private int nodeCornerRadius = 3;
@@ -356,6 +365,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
                             CornerRadius = nodeCornerRadius,
                             BorderColor = "#bcbebf",
                         };
+                    UpdateExpandCollapseIconOffset(node.ExpandIcon);
                     node.CollapseIcon = new DiagramCollapseIcon()
                         {
                             Shape = DiagramCollapseIcons.Plus,
@@ -365,6 +375,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
                             CornerRadius = nodeCornerRadius,
                             BorderColor = "#bcbebf",
                         };
+                    UpdateExpandCollapseIconOffset(node.CollapseIcon);
                 }
                 else
                 {
@@ -373,6 +384,26 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 }
                 node.Shape = new BasicShape { Shape = NodeBasicShapes.Rectangle, Type = NodeShapes.Basic, CornerRadius = nodeCornerRadius };
             }
+        }
+    }
+
+    private void UpdateExpandCollapseIconOffset(DiagramIcon icon)
+    {
+        if (layoutOrientation == LayoutOrientation.LeftToRight || layoutOrientation == LayoutOrientation.RightToLeft)
+        {
+            icon.OffsetX = 0.5;
+            icon.OffsetY = 1;
+            if (layoutOrientation == LayoutOrientation.RightToLeft)
+            {
+                icon.OffsetX = 0.5;
+                icon.OffsetY = 0;
+            }
+        }
+        else if (layoutOrientation == LayoutOrientation.TopToBottom || layoutOrientation == LayoutOrientation.BottomToTop)
+        {
+            icon.OffsetX = 1;
+            icon.OffsetY = 0.5;
+
         }
     }
 
@@ -755,22 +786,20 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private async Task ToggleItemCount()
     {
         showChildCount = !showChildCount;
-        await diagram.RefreshDataSourceAsync();
-        await diagram.DoLayoutAsync();
+        await RefreshDiagramLayout();
     }
 
     private async Task ToggleExpandCollapse()
     {
         showExpandCollapseIcon = !showExpandCollapseIcon;
-        await diagram.RefreshDataSourceAsync();
-        await diagram.DoLayoutAsync();
+        await RefreshDiagramLayout();
     }
 
 
     #endregion
 
     #region Hamburger Menu Actions
-    private void HandleHamburgerMenuAction(string action)
+    private async Task HandleHamburgerMenuAction(string action)
     {
         switch (action)
         {
@@ -778,15 +807,15 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 // ExportDiagramAsImage();
                 break;
             case "rotate-layout":
-                RotateDiagramLayout();
+                await RotateDiagramLayout();
                 break;
             case "expand-graph":
-                ToggleGraphCollapse();
+                await ToggleGraphCollapse();
                 break;
         }
     }
 
-    private void ToggleGraphCollapse()
+    private async Task ToggleGraphCollapse()
     {
         var nodes = diagram.Nodes;
 
@@ -810,7 +839,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
             var rootNodes = nodes.Where(node => node.InEdges.Count == 0).ToList();
             foreach (var node in rootNodes)
             {
-                if (node.ExpandIcon == null || node.ExpandIcon.Shape == DiagramExpandIcons.None)
+                if (node.ID == "main-root")
                 {
                     foreach (var edgeId in node.OutEdges)
                     {
@@ -833,51 +862,24 @@ IsModal="true" @bind-Visible="isDialogVisible">
             // After collapsing, reflect the new state
             isGraphCollapsed = true;
         }
+        await RefreshDiagramLayout();
     }
 
-    private void RotateDiagramLayout()
+    private async Task RotateDiagramLayout()
     {
-        // React Implementation for rotating the diagram layout
-        // currentOrientationIndex = (currentOrientationIndex + 1) % orientations.length;
-        // diagramInstance.layout.orientation = orientations[currentOrientationIndex];
-        // diagramInstance.nodes.forEach((node: Node) => {
-        //     const offset = calculateIconOffset(node.width, orientations[currentOrientationIndex]);
-        //     node.expandIcon.offset = offset;
-        //     node.collapseIcon.offset = offset;
-        // });
-        // diagramInstance.dataBind();
-        // diagramInstance.fitToPage();
-        // const calculateIconOffset = (width: number, orientation: string): { x: number, y: number } => {
-        //     const iconHeight = 33;
-        //     let x = 0.5;
-        //     let y = 0.5;
+        // Cycle through the orientations
+        currentOrientationIndex = (currentOrientationIndex + 1) % orientationsList.Count();
 
-        //     switch (orientation)
-        //     {
-        //         case "LeftToRight":
-        //             x = 0.5;
-        //             y = 1 - (iconHeight / 2 / width);
-        //             break;
-        //         case "RightToLeft":
-        //             x = 0.5;
-        //             y = (iconHeight / 2 / width);
-        //             break;
-        //         case "TopToBottom":
-        //             x = 1 - (iconHeight / 2 / width); // Center horizontally
-        //             y = 0.5;
-        //             break;
-        //         case "BottomToTop":
-        //             x = 1 - (iconHeight / 2 / width); // Center horizontally
-        //             y = 0.5;
-        //             break;
-        //     }
-        //     return { x, y }
-        //     ;
-        // }
-        // ;
-        // rewrite the above function in C#, for rotating the diagram layout, and also adjsuting the expand collapse button accordingly
+        layoutOrientation = orientationsList[currentOrientationIndex];
 
-    
+        await RefreshDiagramLayout();
+        diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
+    }
+
+    private async Task RefreshDiagramLayout()
+    {
+        await diagram.RefreshDataSourceAsync();
+        await diagram.DoLayoutAsync();
     }
     #endregion
 }
