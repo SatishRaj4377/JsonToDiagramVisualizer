@@ -25,6 +25,9 @@
 
         <!-- Diagram Panel -->
         <div class="right-panel">
+
+            <HamburgerMenu OnHamburgerMenuAction="HandleHamburgerMenuAction" IsGraphCollapsed="@isGraphCollapsed"/>
+
             <SfDiagramComponent @ref="diagram"
             Click="OnDiagramClick"
             Width="100%" Height="100%"
@@ -208,6 +211,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private int nodeCount => diagramData.Nodes.Count;
     private bool isJsonValidStatus = true;
+
+    private bool isGraphCollapsed = false;
     #endregion
 
     #region Splitter
@@ -680,7 +685,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
     }
     #endregion
 
-    #region NavMenu Actions
+    #region Nav Menu Actions
 
     private async Task HandleNavBarAction(string action)
     {
@@ -763,6 +768,118 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
 
     #endregion
+
+    #region Hamburger Menu Actions
+    private void HandleHamburgerMenuAction(string action)
+    {
+        switch (action)
+        {
+            case "export-image":
+                // ExportDiagramAsImage();
+                break;
+            case "rotate-layout":
+                RotateDiagramLayout();
+                break;
+            case "expand-graph":
+                ToggleGraphCollapse();
+                break;
+        }
+    }
+
+    private void ToggleGraphCollapse()
+    {
+        var nodes = diagram.Nodes;
+
+        if (isGraphCollapsed)
+        {
+            // Expand all nodes
+            foreach (var node in nodes)
+            {
+                // Check if a node is already expanded
+                if (!node.IsExpanded)
+                {
+                    node.IsExpanded = true;
+                }
+            }
+            // After expanding, reflect the new state
+            isGraphCollapsed = false;
+        }
+        else
+        {
+            // Collapse only the root nodes
+            var rootNodes = nodes.Where(node => node.InEdges.Count == 0).ToList();
+            foreach (var node in rootNodes)
+            {
+                if (node.ExpandIcon == null || node.ExpandIcon.Shape == DiagramExpandIcons.None)
+                {
+                    foreach (var edgeId in node.OutEdges)
+                    {
+                        var connector = diagram.Connectors.FirstOrDefault(c => c.ID == edgeId);
+                        if (connector != null)
+                        {
+                            var targetNode = nodes.FirstOrDefault(n => n.ID == connector.TargetID);
+                            if (targetNode != null)
+                            {
+                                targetNode.IsExpanded = false;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    node.IsExpanded = false;
+                }
+            }
+            // After collapsing, reflect the new state
+            isGraphCollapsed = true;
+        }
+    }
+
+    private void RotateDiagramLayout()
+    {
+        // React Implementation for rotating the diagram layout
+        // currentOrientationIndex = (currentOrientationIndex + 1) % orientations.length;
+        // diagramInstance.layout.orientation = orientations[currentOrientationIndex];
+        // diagramInstance.nodes.forEach((node: Node) => {
+        //     const offset = calculateIconOffset(node.width, orientations[currentOrientationIndex]);
+        //     node.expandIcon.offset = offset;
+        //     node.collapseIcon.offset = offset;
+        // });
+        // diagramInstance.dataBind();
+        // diagramInstance.fitToPage();
+        // const calculateIconOffset = (width: number, orientation: string): { x: number, y: number } => {
+        //     const iconHeight = 33;
+        //     let x = 0.5;
+        //     let y = 0.5;
+
+        //     switch (orientation)
+        //     {
+        //         case "LeftToRight":
+        //             x = 0.5;
+        //             y = 1 - (iconHeight / 2 / width);
+        //             break;
+        //         case "RightToLeft":
+        //             x = 0.5;
+        //             y = (iconHeight / 2 / width);
+        //             break;
+        //         case "TopToBottom":
+        //             x = 1 - (iconHeight / 2 / width); // Center horizontally
+        //             y = 0.5;
+        //             break;
+        //         case "BottomToTop":
+        //             x = 1 - (iconHeight / 2 / width); // Center horizontally
+        //             y = 0.5;
+        //             break;
+        //     }
+        //     return { x, y }
+        //     ;
+        // }
+        // ;
+        // rewrite the above function in C#, for rotating the diagram layout, and also adjsuting the expand collapse button accordingly
+
+    
+    }
+    #endregion
 }
 
 <style>
@@ -814,6 +931,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     /* Diagram */
     .right-panel {
+        position: relative;
+        width: 100%;
         height: 100%;
         overflow: hidden;
     }

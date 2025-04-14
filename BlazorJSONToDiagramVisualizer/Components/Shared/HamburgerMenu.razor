@@ -1,0 +1,59 @@
+﻿@using Syncfusion.Blazor.SplitButtons
+
+<SfDropDownButton CssClass="e-caret-hide hamburger-btn">
+    <Syncfusion.Blazor.Buttons.SfIcon IconCss="e-icons e-menu"/>
+    <DropDownMenuItems>
+        <DropDownMenuItem Text="Export As Image" IconCss="e-icons e-export" Id="export-image" />
+        <DropDownMenuItem Text="Rotate Layout" IconCss="e-icons e-refresh" Id="rotate-layout" />
+        <DropDownMenuItem Text="@(IsGraphCollapsed ? "Expand Graph" : "Collapse Graph")" IconCss="e-icons e-collapse-2" Id="expand-graph" />
+    </DropDownMenuItems>
+    <DropDownButtonEvents ItemSelected="OnHamburgerMenuItemClick" />
+</SfDropDownButton>
+
+@code {
+    [Parameter] public EventCallback<string> OnHamburgerMenuAction { get; set; }
+
+    [Parameter] public bool IsGraphCollapsed { get; set; } = false;
+
+    private async Task OnHamburgerMenuItemClick(MenuEventArgs args)
+    {
+        if (string.IsNullOrWhiteSpace(args.Item.Id))
+            return;
+
+        await OnHamburgerMenuAction.InvokeAsync(args.Item.Id);
+    }
+
+
+}
+
+<style>
+    .hamburger-btn {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 100;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+        border-radius: 3px;
+        padding: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .hamburger-btn.e-dropdown-btn,
+    .hamburger-btn.e-dropdown-btn.e-btn {
+        background: #ebebeb;
+        color: black;
+        border: none;
+    }
+
+    .hamburger-btn.e-dropdown-popup ul{
+        border: none;
+    }
+
+    .hamburger-btn .e-icons {
+        font-size: 18px;
+    }
+
+
+</style>
