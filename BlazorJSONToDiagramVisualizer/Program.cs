@@ -1,4 +1,5 @@
 using BlazorJSONToDiagramVisualizer.Components;
+using BlazorJSONToDiagramVisualizer.Components.Helper_Class;
 using Syncfusion.Blazor;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -8,6 +9,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddSyncfusionBlazor();
 builder.Services.AddHttpClient();
+builder.Services.AddSingleton<ThemeService>();
 
 var app = builder.Build();
 

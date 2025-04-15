@@ -1,7 +1,8 @@
 ﻿@using Syncfusion.Blazor.Navigations
 @using Syncfusion.Blazor.SplitButtons
+@inject ThemeService ThemeService
 
-<div class="navbar-toolbar-container" style="background-color: transparent; padding: 8px 20px; display: flex; align-items: center;">
+<div class="navbar-toolbar-container @(ThemeService.CurrentTheme == "dark" ? "navbar-dark" : "navbar-light")" style="padding: 8px 20px; display: flex; align-items: center;">
     <div class="navbar-title" style="font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 8px; margin-right: 40px;">
         <span class="sf-icon-Code"></span>
         <span>{ } JSON To Diagram Visualizer</span>
@@ -38,8 +39,8 @@
                 <Template>
                     <SfDropDownButton CssClass="e-menu-btn" Content="Theme">
                         <DropDownMenuItems>
-                            <DropDownMenuItem Text="Light" IconCss="@GetIconForTheme("theme-light")" Id="theme-light" />
-                            <DropDownMenuItem Text="Dark" IconCss="@GetIconForTheme("theme-dark")" Id="theme-dark" />
+                            <DropDownMenuItem Text="Light" IconCss="@GetIconForTheme("light")" Id="light" />
+                            <DropDownMenuItem Text="Dark" IconCss="@GetIconForTheme("dark")" Id="dark" />
                         </DropDownMenuItems>
                         <DropDownButtonEvents ItemSelected="OnMenuItemClick" />
                     </SfDropDownButton>
@@ -53,7 +54,23 @@
     [Parameter] public EventCallback<string> OnNavMenuAction { get; set; }
 
     private HashSet<string> ToggledViewItems = new() { "toggle-grid", "toggle-count", "toggle-expand" };
-    private string SelectedTheme = "theme-light";
+    private string SelectedTheme = "light";
+    private ThemeSettings Settings;
+    private string CurrentTheme = "light";
+
+    protected override void OnInitialized()
+    {
+        ThemeService.OnThemeChanged += HandleThemeChanged;
+        CurrentTheme = ThemeService.CurrentTheme;
+        Settings = ThemeService.CurrentThemeSettings;
+    }
+    private void HandleThemeChanged()
+    {
+        CurrentTheme = ThemeService.CurrentTheme;
+        Settings = ThemeService.CurrentThemeSettings;
+
+        InvokeAsync(StateHasChanged);
+    }
 
     private async Task OnMenuItemClick(MenuEventArgs args)
     {
@@ -70,7 +87,7 @@
         }
 
         // Switch Theme
-        if (args.Item.Id.StartsWith("theme-"))
+        if (args.Item.Id.StartsWith("light") || args.Item.Id.StartsWith("dark"))
         {
             SelectedTheme = args.Item.Id;
         }
@@ -82,7 +99,32 @@
     private string GetIconForTheme(string id) => SelectedTheme == id ? "e-icons e-check" : "";
 }
 <style>
-    .e-dropdown-btn, .e-dropdown-btn.e-btn {
+    .navbar-light {
+        color: #212121;
+        background-color: rgb(236, 236, 236);
+    }
+
+    .navbar-dark {
+        background-color: #212121;
+        color: rgb(236, 236, 236);
+        border-bottom: 1px solid rgb(77, 77, 77);
+    }
+
+    .navbar-toolbar-container .e-toolbar, .navbar-toolbar-container .e-toolbar .e-btn {
+        border: 0;
+        background-color: transparent;
+        box-shadow: none;
+    }
+    
+    .navbar-toolbar-container .e-toolbar .e-btn:hover{
+        background: rgba(184, 184, 184, 0.657)
+    }
+
+    .navbar-toolbar-container .e-toolbar .e-toolbar-items {
+        background-color: transparent;
+    }
+
+/*     .e-dropdown-btn, .e-dropdown-btn.e-btn {
         background: transparent;
         color: black;
         border: 0;
@@ -99,5 +141,5 @@
     .e-dropdown-btn:hover,
     .e-dropdown-btn.e-btn:hover {
         background: #f0f0f0;
-    }
+    } */
 </style>

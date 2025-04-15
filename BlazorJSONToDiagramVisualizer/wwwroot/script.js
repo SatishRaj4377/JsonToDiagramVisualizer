@@ -102,3 +102,14 @@ window.setNodeStyle = function (domId, stroke, fill, strokeWidth) {
         element.setAttribute("stroke-width", strokeWidth);
     }
 };
+
+window.setTheme = (themeUrl) => {
+    const themeLink = document.getElementById('theme-link');
+    if (themeLink) {
+        themeLink.href = themeUrl;
+    }
+};
+
+window.changeDiagramBackground = (color) =>{
+    document.querySelector('.e-diagram').style.backgroundColor = color;
+}

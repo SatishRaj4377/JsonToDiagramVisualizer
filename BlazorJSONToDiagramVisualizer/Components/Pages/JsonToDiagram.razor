@@ -1,6 +1,7 @@
 ﻿@page "/"
 @inject IJSRuntime JS
 @inject HttpClient Http
+@inject ThemeService ThemeService
 
 <PageTitle>Diagram-JSON</PageTitle>
 
@@ -13,7 +14,7 @@
     <!-- Main Grid Area -->
     <div class="main-grid">
         <!-- Editor Panel -->
-        <div class="left-panel" style="width:@editorPanelWidthPx">
+        <div class="left-panel @(ThemeService.CurrentTheme)" style="width:@editorPanelWidthPx">
             <StandaloneCodeEditor @ref="@monacoEditor"
             CssClass="json-editor"
             ConstructionOptions="EditorOptions"
@@ -21,10 +22,10 @@
         </div>
 
         <!-- Splitter -->
-        <div class="splitter" @onmousedown="OnSplitterMouseDown"></div>
+        <div class="splitter @(ThemeService.CurrentTheme)" @onmousedown="OnSplitterMouseDown"></div>
 
         <!-- Diagram Panel -->
-        <div class="right-panel">
+        <div class="right-panel scroll-hide @(ThemeService.CurrentTheme)">
 
             <HamburgerMenu OnHamburgerMenuAction="HandleHamburgerMenuAction" IsGraphCollapsed="@isGraphCollapsed"/>
 
@@ -39,8 +40,7 @@
                 @bind-Orientation ="@layoutOrientation"
                 HorizontalSpacing="30"
                 VerticalSpacing="100" />
-                <SnapSettings @bind-Constraints ="@snapConstraints">
-                </SnapSettings>
+                <SnapSettings @bind-Constraints ="@snapConstraints"/>
                 <DiagramTemplates>
                     <AnnotationTemplate>
                         @if (context is Annotation annotation)
@@ -99,23 +99,23 @@
         </div>
 
         <!-- Bottom Bar -->
-        <div class="bottom-bar">
-            <div class="bottom-bar-content">
+        <div class="bottom-bar @(ThemeService.CurrentTheme)">
+            <div class="bottom-bar-content @(ThemeService.CurrentTheme)">
                 <span class="status-message">
                     @if (isJsonValidStatus)
-                {
-                    <span>
-                        <Syncfusion.Blazor.Buttons.SfIcon IconCss="e-icons e-check status-icon" />
-                        Valid JSON
-                    </span>
-                }
-                else
-                {
-                    <span class="invalid-json">
-                        <Syncfusion.Blazor.Buttons.SfIcon IconCss="e-icons e-close status-icon" />
-                        Invalid JSON
-                    </span>
-                }
+                    {
+                        <span>
+                        <Syncfusion.Blazor.Buttons.SfIcon IconCss="e-icons e-check-3 status-icon" />
+                            Valid JSON
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="invalid-json">
+                        <Syncfusion.Blazor.Buttons.SfIcon IconCss="e-icons e-close-6 status-icon" />
+                            Invalid JSON
+                        </span>
+                    }
             </span>
             <span class="bottom-right">Nodes: @nodeCount</span>
         </div>
@@ -235,6 +235,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private bool isJsonValidStatus = true;
     private bool isGraphCollapsed = false;
     private ExportImageDialog exportDialog;
+
     #endregion
 
     #region Splitter
@@ -307,6 +308,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
         }
     }
 }";
+
+        ThemeService.CurrentThemeSettings = new ThemeSettings("light");
     }
 
     private StandaloneEditorConstructionOptions EditorOptions(StandaloneCodeEditor _)
@@ -463,6 +466,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
             // Update the diagram layout
             await diagram.DoLayoutAsync();
+
+            await UpdateDefaultNodeStyles();
 
             // Fit the diagram to the page
             diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
@@ -762,7 +767,10 @@ IsModal="true" @bind-Visible="isDialogVisible">
             case "toggle-expand":
                 await ToggleExpandCollapse();
                 break;
-
+            case "light":
+            case "dark":
+                await ToggleTheme(action);
+                break;
         }
 
     }
@@ -822,6 +830,36 @@ IsModal="true" @bind-Visible="isDialogVisible">
         await RefreshDiagramLayout();
     }
 
+
+    private async Task ToggleTheme(string theme)
+    {
+        ThemeService.CurrentThemeSettings = new ThemeSettings(theme);
+
+        await JS.InvokeVoidAsync("setTheme", ThemeService.CurrentThemeSettings.CssUrl);
+
+        await UpdateDiagramElements();
+
+        monacoEditor.UpdateOptions(new EditorUpdateOptions()
+        {
+            Theme = $"vs-{theme}"
+        });
+
+        ThemeService.SetTheme(theme, ThemeService.CurrentThemeSettings);
+    }
+
+    private async Task UpdateDiagramElements()
+    {
+        await JS.InvokeVoidAsync("changeDiagramBackground", ThemeService.CurrentThemeSettings.DiagramBackgroundColor);
+        if (snapConstraints == SnapConstraints.ShowLines)
+        {
+            diagram.SnapSettings = new SnapSettings
+            {
+                    HorizontalGridLines = new HorizontalGridLines { LineColor = ThemeService.CurrentThemeSettings.GridlinesColor },
+                    VerticalGridLines = new VerticalGridLines { LineColor = ThemeService.CurrentThemeSettings.GridlinesColor },
+            };
+        }
+        await UpdateDefaultNodeStyles();
+    }
 
     #endregion
 
@@ -926,7 +964,6 @@ IsModal="true" @bind-Visible="isDialogVisible">
     }
     #endregion
 
-
     #region Toolbar Actions
 
     private async Task HandleToolBarAction(string action)
@@ -951,21 +988,13 @@ IsModal="true" @bind-Visible="isDialogVisible">
         }
     }
 
-    private static class ThemeColors
-    {
-        public const string NodeStroke = "#cccccc";
-        public const string NodeFill = "#ffffff";
-        public const string HighlightStroke = "lightgreen";
-        public const string HighlightFill = "#c6f3d6";
-    }
-
     private async Task SearchNodes(string searchText)
     {
         searchText = searchText.Trim().ToLower();
         var matchingNodes = new List<Node>();
         if (string.IsNullOrWhiteSpace(searchText))
         {
-            await ResetAllNodeStyles();
+            await UpdateDefaultNodeStyles();
             return;
         }
 
@@ -977,7 +1006,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
             string nodeText = node.Data.GetType().GetProperty("actualdata")?.GetValue(node.Data, null)?.ToString()?.ToLower();
             string contentId = node.ID + "_content";
 
-            await SetNodeStyle(contentId, ThemeColors.NodeStroke, ThemeColors.NodeFill, "1.5");
+            await SetNodeStyle(contentId, strokeColor: ThemeService.CurrentThemeSettings.NodeStrokeColor, ThemeService.CurrentThemeSettings.NodeFillColor, strokeWidth: "1.5");
 
             if (!string.IsNullOrEmpty(nodeText) && nodeText.Contains(searchText))
             {
@@ -989,7 +1018,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
         foreach (var node in matchingNodes)
         {
             string contentId = node.ID + "_content";
-            await SetNodeStyle(contentId, ThemeColors.HighlightStroke, ThemeColors.HighlightFill, "2");
+            await SetNodeStyle(contentId, strokeColor: "LightGreen", ThemeService.CurrentThemeSettings.HighlightColor, "2");
         }
 
     }
@@ -1002,12 +1031,12 @@ IsModal="true" @bind-Visible="isDialogVisible">
         }
     }
 
-    private async Task ResetAllNodeStyles()
+    private async Task UpdateDefaultNodeStyles()
     {
         foreach (var node in diagram.Nodes)
         {
             string contentId = node.ID + "_content";
-            await SetNodeStyle(contentId, ThemeColors.NodeStroke, ThemeColors.NodeFill, "1.5");
+            await SetNodeStyle(contentId, strokeColor: ThemeService.CurrentThemeSettings.NodeStrokeColor, ThemeService.CurrentThemeSettings.NodeFillColor, strokeWidth: "1.5");
         }
     }
 
@@ -1032,8 +1061,6 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     /* Top Nav */
     .navbar {
-        height: 48px;
-        background-color: #f8f8f8;
         z-index: 10;
     }
 
@@ -1049,6 +1076,10 @@ IsModal="true" @bind-Visible="isDialogVisible">
         height: 100%;
         overflow: hidden;
     }
+    
+    .left-panel.dark {
+        background-color: #1e1e1e;
+    }
 
     .json-editor {
         height: 100%;
@@ -1061,6 +1092,10 @@ IsModal="true" @bind-Visible="isDialogVisible">
         height: 100%;
     }
 
+    .splitter.dark {
+        background-color: #333;
+    }
+
     /* Diagram */
     .right-panel {
         position: relative;
@@ -1068,11 +1103,15 @@ IsModal="true" @bind-Visible="isDialogVisible">
         height: 100%;
         overflow: hidden;
     }
+    
+    .right-panel.dark {
+        background-color: #1e1e1e;
+    }
 
     /* Bottom Bar */
     .bottom-bar {
         height: 26px;
-        background-color: #f1f1f1;
+        background-color: rgb(236, 236, 236);
         border-top: 1px solid #ccc;
         display: flex;
         align-items: center;
@@ -1089,6 +1128,9 @@ IsModal="true" @bind-Visible="isDialogVisible">
         gap: 20px;
     }
 
+    .bottom-bar-content.dark {
+        color: #eeee;
+    }
     .bottom-right {
         margin-left: auto;
     }
@@ -1101,13 +1143,36 @@ IsModal="true" @bind-Visible="isDialogVisible">
     }
 
     .status-icon {
-        font-size: 16px;
+        font-size: 13px;
         vertical-align: middle;
         margin-right: -3px;
     }
 
     .invalid-json {
         color: red;
+    }
+
+    .bottom-bar.dark {
+        background-color: #212121;
+        border-top: 1px solid rgb(77, 77, 77);
+    }
+
+    /* For WebKit-based browsers like Chrome and Safari */
+    ::-webkit-scrollbar {
+        width: 0px; /* Remove scrollbar width for vertical */
+        height: 0px; /* Remove scrollbar height for horizontal */
+    }
+
+    /* To hide scrollbars but keep scroll function */
+    .scroll-hide {
+        overflow: scroll; /* Sets element to be scrollable */
+        scrollbar-width: none; /* For Firefox */
+        -ms-overflow-style: none; /* For IE and Edge */
+    }
+
+    /* Add this only in case you still want scrolling on hidden scrollbar */
+    .scroll-hide::-webkit-scrollbar {
+        display: none; /* Hides scrollbar */
     }
 
 </style>
