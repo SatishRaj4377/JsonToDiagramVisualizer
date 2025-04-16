@@ -32,21 +32,21 @@
 
             @* Diagram Control *@
             <SfDiagramComponent @ref="diagram"
-                InteractionController="DiagramInteractions.ZoomPan"
-                Click="OnDiagramClick"
-                Width="100%" Height="100%"
-                Created="OnCreated"
-                NodeCreating="OnNodeCreating"
-                ConnectorCreating="OnConnectorCreating">
-                    <Layout Type="LayoutType.HierarchicalTree"
-                    SamePoint="false"
-                    @bind-Orientation ="@layoutOrientation"
-                    HorizontalSpacing="30"
-                    VerticalSpacing="100" />
-                    <SnapSettings @bind-Constraints ="@snapConstraints">
-                        <HorizontalGridLines @bind-LineColor="@ThemeService.CurrentThemeSettings.GridlinesColor"/>
-                        <VerticalGridLines @bind-LineColor="@ThemeService.CurrentThemeSettings.GridlinesColor"/>
-                    </SnapSettings>
+            InteractionController="DiagramInteractions.ZoomPan"
+            Click="OnDiagramClick"
+            Width="100%" Height="100%"
+            Created="OnCreated"
+            NodeCreating="OnNodeCreating"
+            ConnectorCreating="OnConnectorCreating">
+                <Layout Type="LayoutType.HierarchicalTree"
+                SamePoint="false"
+                @bind-Orientation ="@layoutOrientation"
+                HorizontalSpacing="30"
+                VerticalSpacing="100" />
+                <SnapSettings @bind-Constraints ="@snapConstraints">
+                    <HorizontalGridLines @bind-LineColor="@ThemeService.CurrentThemeSettings.GridlinesColor"/>
+                    <VerticalGridLines @bind-LineColor="@ThemeService.CurrentThemeSettings.GridlinesColor"/>
+                </SnapSettings>
             </SfDiagramComponent>
 
             @* Tool Bar Control *@
@@ -82,9 +82,9 @@
 
 @* Node Data Popup Dialog  *@
 <SfDialog Width="400px"
-    Header="Node Details"
-    ShowCloseIcon="true" 
-    IsModal="true" @bind-Visible="isDialogVisible">
+Header="Node Details"
+ShowCloseIcon="true" 
+IsModal="true" @bind-Visible="isDialogVisible">
     <DialogEvents OnOverlayModalClick="() => isDialogVisible = false"></DialogEvents>
     <DialogTemplates>
         <Content>
@@ -178,7 +178,7 @@
     private LayoutOrientation layoutOrientation = LayoutOrientation.LeftToRight;
 
     private double expandCollapseIconWidth = 36;
-    private int nodeCornerRadius = 3;
+    private int nodeCornerRadius = 2;
     private double minNodeWidth = 120;
 
     private bool isDialogVisible = false;
@@ -367,6 +367,7 @@
                 HorizontalAlignment = HorizontalAlignment.Right,
                 CornerRadius = nodeCornerRadius,
                 BorderColor = ThemeService.CurrentThemeSettings.ExpandIconBorder,
+                Fill = ThemeService.CurrentThemeSettings.ExpandIconFillColor
             };
             UpdateExpandCollapseIconOffset(node.ExpandIcon);
         }
@@ -379,7 +380,8 @@
                 Height = node.Height ?? 50,
                 HorizontalAlignment = HorizontalAlignment.Right,
                 CornerRadius = nodeCornerRadius,
-                    BorderColor = ThemeService.CurrentThemeSettings.ExpandIconBorder,
+                BorderColor = ThemeService.CurrentThemeSettings.ExpandIconBorder,
+                Fill = ThemeService.CurrentThemeSettings.ExpandIconFillColor, 
             };
             UpdateExpandCollapseIconOffset(node.CollapseIcon);
         }
@@ -401,7 +403,6 @@
         {
             icon.OffsetX = 1;
             icon.OffsetY = 0.5;
-
         }
     }
 
@@ -438,6 +439,8 @@
 
             diagram.Clear();
             nodeBase.Clear();
+            diagram.Nodes.Clear();
+            diagram.Connectors.Clear();
 
             foreach (var node in diagramData.Nodes)
             {
@@ -563,6 +566,7 @@
             {
                 Color = ThemeService.CurrentThemeSettings.TextKeyColor,
                 TextAlign = TextAlign.Left,
+                FontFamily = "Consolas"
             };
 
             var countAnnotation = node.Annotations[1];
@@ -571,6 +575,7 @@
             {
                 Color = ThemeService.CurrentThemeSettings.TextValueColor,
                 TextAlign = TextAlign.Right,
+                FontFamily = "Consolas"
             };
 
             if (showChildCount)
@@ -689,28 +694,32 @@
 
         return rawValue;
     }
+
     private void ApplyAnnotationStyle(Annotation annotation, string rawValue)
     {
         if (annotation.ID.StartsWith("Key"))
         {
             annotation.Style = new TextStyle
-                {
-                    Color = ThemeService.CurrentThemeSettings.TextKeyColor
-                };
+            {
+                Color = ThemeService.CurrentThemeSettings.TextKeyColor,
+                FontFamily = "Consolas"
+            };
         }
         else if (annotation.ID.StartsWith("Value"))
         {
             string valueStyle = DetermineValueStyle(rawValue);
             annotation.Style = new TextStyle
             {
-                Color = valueStyle
+                Color = valueStyle,
+                FontFamily = "Consolas"
             };
         }
         else if (annotation.ID.StartsWith("Count"))
         {
             annotation.Style = new TextStyle
             {
-                Color = ThemeService.CurrentThemeSettings.TextValueColor
+                Color = ThemeService.CurrentThemeSettings.TextValueColor,
+                FontFamily = "Consolas"
             };
         }
     }
@@ -973,7 +982,6 @@
         await RefreshDiagramLayout();
     }
 
-
     private async Task ToggleTheme(string theme)
     {
         ThemeService.CurrentThemeSettings = new ThemeSettings(theme);
@@ -1004,6 +1012,16 @@
                     ApplyAnnotationStyle(annotation, rawValue);
                 }
             }
+            if (node.ExpandIcon != null)
+            {
+                node.ExpandIcon.BorderColor = ThemeService.CurrentThemeSettings.ExpandIconBorder;
+                node.ExpandIcon.Fill = ThemeService.CurrentThemeSettings.ExpandIconFillColor;                
+            }
+            if (node.CollapseIcon != null)
+            {
+                node.CollapseIcon.BorderColor = ThemeService.CurrentThemeSettings.ExpandIconBorder;
+                node.CollapseIcon.Fill = ThemeService.CurrentThemeSettings.ExpandIconFillColor;
+            }
         }
         
         foreach(Connector connector in diagram.Connectors)
@@ -1017,6 +1035,7 @@
     #endregion
 
     #region Hamburger Menu Actions
+
     private async Task HandleHamburgerMenuAction(string action)
     {
         switch (action)
@@ -1115,6 +1134,7 @@
         await diagram.RefreshDataSourceAsync();
         await diagram.DoLayoutAsync();
     }
+
     #endregion
 
     #region Toolbar Actions

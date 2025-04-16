@@ -22,7 +22,7 @@ window.getWindowWidth = () => {
 window.getTextSize = (text, font) => {
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
-    context.font = font || "16px Arial";
+    context.font = font || "16px Consolas";
 
     const lines = text.split("\n");
     const lineHeight = 20; // average line height in px
