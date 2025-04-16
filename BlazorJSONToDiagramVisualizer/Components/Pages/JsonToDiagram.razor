@@ -6,14 +6,14 @@
 <PageTitle>Diagram-JSON</PageTitle>
 
 <div class="app-layout">
-    <!-- Top Navbar -->
+    @* Top Navbar *@
     <div class="navbar">
         <NavMenu OnNavMenuAction="HandleNavBarAction" />
     </div>
 
-    <!-- Main Grid Area -->
+    @* Main Area  *@
     <div class="main-grid">
-        <!-- Editor Panel -->
+        @* Editor Panel  *@
         <div class="left-panel @(ThemeService.CurrentTheme)" style="width:@editorPanelWidthPx">
             <StandaloneCodeEditor @ref="@monacoEditor"
             CssClass="json-editor"
@@ -21,101 +21,58 @@
             OnDidChangeModelContent="OnModelContentChange" />
         </div>
 
-        <!-- Splitter -->
+        @* Splitter *@
         <div class="splitter @(ThemeService.CurrentTheme)" @onmousedown="OnSplitterMouseDown"></div>
 
-        <!-- Diagram Panel -->
+        @* Diagram Panel  *@
         <div class="right-panel scroll-hide @(ThemeService.CurrentTheme)">
 
+            @* Hamburger Menu *@
             <HamburgerMenu OnHamburgerMenuAction="HandleHamburgerMenuAction" IsGraphCollapsed="@isGraphCollapsed"/>
 
+            @* Diagram Control *@
             <SfDiagramComponent @ref="diagram"
-            Click="OnDiagramClick"
-            Width="100%" Height="100%"
-            Created="OnCreated"
-            NodeCreating="OnNodeCreating"
-            ConnectorCreating="OnConnectorCreating">
-                <Layout Type="LayoutType.HierarchicalTree"
-                SamePoint="false"
-                @bind-Orientation ="@layoutOrientation"
-                HorizontalSpacing="30"
-                VerticalSpacing="100" />
-                <SnapSettings @bind-Constraints ="@snapConstraints"/>
-                <DiagramTemplates>
-                    <AnnotationTemplate>
-                        @if (context is Annotation annotation)
-                            {
-                                if (annotation.UseTemplate && annotation.ID.Contains("LeafNode"))
-                                {
-                                    string[] lines = annotation.Content?.ToString()?.Split('\n', StringSplitOptions.RemoveEmptyEntries) ?? new string[0];
-                                    <div style="height: 100%; width: 100%; display: flex; justify-content: center; align-items: center;">
-                                        <!-- Inner container is left-aligned, but centered inside the node -->
-                                        <div style="display: flex; flex-direction: column; align-items: flex-start;">
-                                            @foreach (var line in lines)
-                                            {
-                                                var colonIndex = line.IndexOf(':');
-                                                var key = colonIndex >= 0 ? line.Substring(0, colonIndex + 1) : line;
-                                                var rawValue = colonIndex >= 0 ? line.Substring(colonIndex + 1).Trim() : "";
-                                                string valueStyle = "color: black;";
-                                                bool isString = true;
+                InteractionController="DiagramInteractions.ZoomPan"
+                Click="OnDiagramClick"
+                Width="100%" Height="100%"
+                Created="OnCreated"
+                NodeCreating="OnNodeCreating"
+                ConnectorCreating="OnConnectorCreating">
+                    <Layout Type="LayoutType.HierarchicalTree"
+                    SamePoint="false"
+                    @bind-Orientation ="@layoutOrientation"
+                    HorizontalSpacing="30"
+                    VerticalSpacing="100" />
+                    <SnapSettings @bind-Constraints ="@snapConstraints">
+                        <HorizontalGridLines @bind-LineColor="@ThemeService.CurrentThemeSettings.GridlinesColor"/>
+                        <VerticalGridLines @bind-LineColor="@ThemeService.CurrentThemeSettings.GridlinesColor"/>
+                    </SnapSettings>
+            </SfDiagramComponent>
 
-                                                if (int.TryParse(rawValue, out _) || double.TryParse(rawValue, out _))
-                                                {
-                                                    valueStyle = "color: brown;";
-                                                    isString = false;
-                                                }
-                                                else if (bool.TryParse(rawValue, out bool boolVal))
-                                                {
-                                                    if (boolVal)
-                                                        valueStyle = "color: green;";
-                                                    else
-                                                        valueStyle = "color: red;";
-                                                    rawValue = boolVal.ToString().ToLower();
-                                                    isString = false;
-                                                }
+            @* Tool Bar Control *@
+            <DiagramToolBar OnToolBarAction="HandleToolBarAction" />
 
-                                                string displayValue = isString && !string.IsNullOrWhiteSpace(rawValue) ? $"\"{rawValue}\"" : rawValue;
-
-                                                <div style="display: flex; align-items: center; padding: 3px 0;">
-                                                    <span style="color: blue;">@key</span>
-                                                    @if (!string.IsNullOrWhiteSpace(displayValue))
-                                                    {
-                                                        <span style="@valueStyle">&nbsp;@displayValue</span>
-                                                    }
-                                                </div>
-                                            }
-                                        </div>
-                                    </div>
-                                }
-                            }
-                        </AnnotationTemplate>
-
-                    </DiagramTemplates>
-                </SfDiagramComponent>
-
-                <DiagramToolBar OnToolBarAction="HandleToolBarAction" />
-
-            </div>
         </div>
+    </div>
 
-        <!-- Bottom Bar -->
-        <div class="bottom-bar @(ThemeService.CurrentTheme)">
-            <div class="bottom-bar-content @(ThemeService.CurrentTheme)">
-                <span class="status-message">
-                    @if (isJsonValidStatus)
-                    {
-                        <span>
+    @* Bottom Status Bar *@
+    <div class="bottom-bar @(ThemeService.CurrentTheme)">
+        <div class="bottom-bar-content @(ThemeService.CurrentTheme)">
+            <span class="status-message">
+                @if (isJsonValidStatus)
+                {
+                    <span>
                         <Syncfusion.Blazor.Buttons.SfIcon IconCss="e-icons e-check-3 status-icon" />
-                            Valid JSON
-                        </span>
-                    }
-                    else
-                    {
-                        <span class="invalid-json">
+                        Valid JSON
+                    </span>
+                }
+                else
+                {
+                    <span class="invalid-json">
                         <Syncfusion.Blazor.Buttons.SfIcon IconCss="e-icons e-close-6 status-icon" />
-                            Invalid JSON
-                        </span>
-                    }
+                        Invalid JSON
+                    </span>
+                }
             </span>
             <span class="bottom-right">Nodes: @nodeCount</span>
         </div>
@@ -123,26 +80,25 @@
 
 </div>
 
-
-<!-- Node Data Popup Dialog -->
+@* Node Data Popup Dialog  *@
 <SfDialog Width="400px"
-Header="Node Details"
-ShowCloseIcon="true" 
-IsModal="true" @bind-Visible="isDialogVisible">
+    Header="Node Details"
+    ShowCloseIcon="true" 
+    IsModal="true" @bind-Visible="isDialogVisible">
     <DialogEvents OnOverlayModalClick="() => isDialogVisible = false"></DialogEvents>
     <DialogTemplates>
         <Content>
-            <div style="padding: 10px; font-family:Consolas">
+            <div>
                 <!-- Node Content Section -->
                 <div style="margin-bottom: 15px;">
-                    <label style="font-weight:bold; font-size:14px; display:block; margin-bottom:5px;">Content</label>
+                    <label style="font-weight:500; font-size:14px; display:block; margin-bottom:5px;">Content</label>
                     <div style="
-                        background-color:#f8f8f8;
+                        background-color: @(ThemeService.CurrentThemeSettings.PopupContentBGColor);
                         border-radius:5px;
                         position:relative;
                         font-size:14px;">
                         <!-- Scrollable content -->
-                        <div style="padding:10px; overflow-x:auto; white-space:pre;">
+                        <div style="padding:10px; overflow-x:auto; white-space:pre; font-family:Consolas">
                             @FormatNodeDataInPopup(selectedNodeContent)
                         </div>
 
@@ -154,21 +110,21 @@ IsModal="true" @bind-Visible="isDialogVisible">
                             background:transparent;
                             border:none;
                             cursor:pointer;">
-                            <span class="e-icons @(isNodeContentCopied ? "e-check" : "e-copy")"></span>
+                            <span class="e-icons @(isNodeContentCopied ? "e-check" : "e-copy")" style="color:#6C757D"></span>
                         </button>
                     </div>
 
                 </div>
                 <!-- JSON Path Section -->
                 <div>
-                    <label style="font-weight:bold; font-size:14px; display:block; margin-bottom:5px;">JSON Path</label>
+                    <label style="font-weight:500; font-size:14px; display:block; margin-bottom:5px;">JSON Path</label>
                     <div style="
-                        background-color:#f8f8f8;
+                        background-color: @(ThemeService.CurrentThemeSettings.PopupContentBGColor);
                         border-radius:5px;
                         position:relative;
                         font-size:14px;">
                         <!-- Scrollable content -->
-                        <div style="padding:10px; overflow-x:auto; white-space:pre;">
+                        <div style="padding:10px; overflow-x:auto; white-space:pre; font-family:Consolas">
                             @FormatNodeDataInPopup(selectedNodePath, true)
                         </div>
 
@@ -180,7 +136,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
                             background:transparent;
                             border:none;
                             cursor:pointer;">
-                            <span class="e-icons @(isNodePathCopied ? "e-check" : "e-copy")"></span>
+                            <span class="e-icons @(isNodePathCopied ? "e-check" : "e-copy")" style="color:#6C757D"></span>
                         </button>
                     </div>
 
@@ -190,7 +146,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
     </DialogTemplates>
 </SfDialog>
 
-<!-- Export as Image Popup Dialog -->
+@* Export as Image Popup Dialog  *@
 <ExportImageDialog @ref="exportDialog" OnExport="HandleExportDiagramAsImage" />
 
 @code {
@@ -223,7 +179,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private double expandCollapseIconWidth = 36;
     private int nodeCornerRadius = 3;
-    private double minNodeWidth = 100;
+    private double minNodeWidth = 120;
 
     private bool isDialogVisible = false;
     private string selectedNodePath = "";
@@ -278,6 +234,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
     #endregion
 
     #region Monaco Editor
+
     protected override void OnInitialized()
     {
         // Initialize the Monaco editor with a default JSON value.
@@ -356,50 +313,75 @@ IsModal="true" @bind-Visible="isDialogVisible">
     {
         if (obj is Node node)
         {
-            node.Style = new ShapeStyle { Fill = "#ffffff", StrokeColor = "#bcbebf", StrokeWidth = 1 };
+            node.Constraints = (NodeConstraints.Default | NodeConstraints.HideThumbs | NodeConstraints.ReadOnly) & ~(NodeConstraints.Rotate | NodeConstraints.Resize | NodeConstraints.Delete);
+            node.Style = new ShapeStyle { Fill = ThemeService.CurrentThemeSettings.NodeFillColor, StrokeColor = ThemeService.CurrentThemeSettings.NodeStrokeColor, StrokeWidth = 1 };
 
             if (node.ID == "main-root")
             {
-                node.Width = 50;
-                node.Height = 50;
+                node.Width = 40;
+                node.Height = 40;
+                // if multi root node then ellipse shape
                 node.Shape = new BasicShape { Shape = NodeBasicShapes.Ellipse, Type = NodeShapes.Basic };
             }
             else
             {
-                var (width, height) = await GetNodeSizeAsync((string)node?.AdditionalInfo["mergedContent"], (bool)node?.AdditionalInfo["isLeaf"], minNodeWidth);
-                node.Width = width;
-                node.Height = height;
-                AdjustNodeAnnotationPosition(node);
-                if (!(bool)node?.AdditionalInfo["isLeaf"] & showExpandCollapseIcon)
+                // if normal node then rectangle shape
+                node.Shape = new BasicShape { Shape = NodeBasicShapes.Rectangle, Type = NodeShapes.Basic, CornerRadius = nodeCornerRadius };
+
+                var additionalInfo = node?.AdditionalInfo;
+                if (additionalInfo != null
+                    && additionalInfo.TryGetValue("mergedContent", out var mergedContent)
+                    && additionalInfo.TryGetValue("isLeaf", out var isLeafObj)
+                    && bool.TryParse(isLeafObj?.ToString(), out bool isLeaf))
                 {
-                    node.ExpandIcon = new DiagramExpandIcon()
-                        {
-                            Shape = DiagramExpandIcons.Minus,
-                            Width = expandCollapseIconWidth,
-                            Height = node.Height ?? 50,
-                            HorizontalAlignment = HorizontalAlignment.Right,
-                            CornerRadius = nodeCornerRadius,
-                            BorderColor = "#bcbebf",
-                        };
-                    UpdateExpandCollapseIconOffset(node.ExpandIcon);
-                    node.CollapseIcon = new DiagramCollapseIcon()
-                        {
-                            Shape = DiagramCollapseIcons.Plus,
-                            Width = expandCollapseIconWidth,
-                            Height = node.Height ?? 50,
-                            HorizontalAlignment = HorizontalAlignment.Right,
-                            CornerRadius = nodeCornerRadius,
-                            BorderColor = "#bcbebf",
-                        };
-                    UpdateExpandCollapseIconOffset(node.CollapseIcon);
+                    var (width, height) = await GetNodeSizeAsync((string)mergedContent, isLeaf, minNodeWidth);
+                    node.Width = width;
+                    node.Height = height;
+                }
+
+                await UpdateNodeAnnotation(node);
+
+                if (additionalInfo != null && !(bool)additionalInfo["isLeaf"] & showExpandCollapseIcon)
+                {
+                    CreateExpandCollapseIcon(node, isExpandIcon: true);
+                    CreateExpandCollapseIcon(node, isExpandIcon: false);
                 }
                 else
                 {
                     node.ExpandIcon = null;
                     node.CollapseIcon = null;
                 }
-                node.Shape = new BasicShape { Shape = NodeBasicShapes.Rectangle, Type = NodeShapes.Basic, CornerRadius = nodeCornerRadius };
             }
+        }
+    }
+
+    private void CreateExpandCollapseIcon(Node node, bool isExpandIcon)
+    {
+        if (isExpandIcon)
+        {
+            node.ExpandIcon = new DiagramExpandIcon()
+            {
+                Shape = DiagramExpandIcons.Minus,
+                Width = expandCollapseIconWidth,
+                Height = node.Height ?? 50,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                CornerRadius = nodeCornerRadius,
+                BorderColor = ThemeService.CurrentThemeSettings.ExpandIconBorder,
+            };
+            UpdateExpandCollapseIconOffset(node.ExpandIcon);
+        }
+        else
+        {
+            node.CollapseIcon = new DiagramCollapseIcon()
+            {
+                Shape = DiagramCollapseIcons.Plus,
+                Width = expandCollapseIconWidth,
+                Height = node.Height ?? 50,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                CornerRadius = nodeCornerRadius,
+                    BorderColor = ThemeService.CurrentThemeSettings.ExpandIconBorder,
+            };
+            UpdateExpandCollapseIconOffset(node.CollapseIcon);
         }
     }
 
@@ -427,14 +409,20 @@ IsModal="true" @bind-Visible="isDialogVisible">
     {
         if (obj is Connector connector)
         {
-            connector.Type = ConnectorSegmentType.Orthogonal;
-            connector.CornerRadius = 15;
-            connector.Style = new ShapeStyle { StrokeColor = "#bcbebf", StrokeWidth = 1.5 };
-            connector.TargetDecorator = new DecoratorSettings
-            {
-                Shape = DecoratorShape.None
-            };
+            connector.Constraints = (ConnectorConstraints.Default | ConnectorConstraints.ReadOnly) & ~(ConnectorConstraints.DragSourceEnd | ConnectorConstraints.DragTargetEnd | ConnectorConstraints.Select);
+            UpdateConnectorStyle(connector);
         }
+    }
+
+    private void UpdateConnectorStyle(Connector connector)
+    {
+        connector.Type = ConnectorSegmentType.Orthogonal;
+        connector.CornerRadius = 15;
+        connector.Style = new ShapeStyle { StrokeColor = ThemeService.CurrentThemeSettings.ConnectorStrokeColor, StrokeWidth = 1.5 };
+        connector.TargetDecorator = new DecoratorSettings
+        {
+            Shape = DecoratorShape.None
+        };
     }
 
     private async Task ParseAndUpdateDiagram()
@@ -448,34 +436,87 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
             isJsonValidStatus = true;
 
-            // Clear existing nodes and connectors
             diagram.Clear();
             nodeBase.Clear();
 
             foreach (var node in diagramData.Nodes)
             {
                 nodeBase.Add(node);
+                CreateAnnotationsForLeafNode(node);
             }
             foreach (var conn in diagramData.Connectors)
             {
                 nodeBase.Add(conn);
             }
 
-            // Add nodes and connectors to the diagram
             await diagram.AddDiagramElementsAsync(nodeBase);
-
-            // Update the diagram layout
             await diagram.DoLayoutAsync();
-
             await UpdateDefaultNodeStyles();
 
-            // Fit the diagram to the page
             diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
         }
         catch (Exception ex)
         {
             isJsonValidStatus = false;
             Console.WriteLine($"Error parsing JSON: {ex.Message}");
+        }
+    }
+
+    private void CreateAnnotationsForLeafNode(Node node)
+    {
+        if (node == null || node.Annotations == null || node.Annotations.Count == 0)
+            return;
+
+        // Check if the node is a leaf
+        bool isLeaf = node.AdditionalInfo != null &&
+                      node.AdditionalInfo.ContainsKey("isLeaf") &&
+                      (bool)node.AdditionalInfo["isLeaf"];
+
+        if (!isLeaf) return;
+
+        var originalContent = node.Annotations[0].Content?.ToString();
+        if (string.IsNullOrWhiteSpace(originalContent))
+            return;
+
+        node.Annotations.Clear();
+
+        var lines = originalContent.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        var totalLines = lines.Length;
+        var spacingY = totalLines > 0 ? 1.0 / (totalLines + 1) : 0.5;
+        var currentLine = 1;
+
+        foreach (var line in lines)
+        {
+            var splitIndex = line.IndexOf(':');
+            string key = line;
+            string value = "";
+            if (splitIndex > -1)
+            {
+                key = line.Substring(0, splitIndex + 1).Trim();
+                value = line.Substring(splitIndex + 1).Trim();
+            }
+
+            double offsetY = currentLine * spacingY;
+
+            // Add Key annotation
+            node.Annotations.Add(new ShapeAnnotation
+            {
+                ID = "Key" + line,
+                Content = key,
+                Offset = new DiagramPoint { X = 0, Y = offsetY },
+            });
+
+            // Add Value annotation (only if there's a value)
+            if (!string.IsNullOrEmpty(value))
+            {
+                node.Annotations.Add(new ShapeAnnotation
+                {
+                    ID = "Value" + line,
+                    Content = value,
+                    Offset = new DiagramPoint { X = 1, Y = offsetY },
+                });
+            }
+            currentLine++;
         }
     }
 
@@ -505,21 +546,22 @@ IsModal="true" @bind-Visible="isDialogVisible">
         return System.Text.RegularExpressions.Regex.Replace(input, pattern, "").Trim();
     }
 
-
-    private void AdjustNodeAnnotationPosition(Node node)
+    private async Task UpdateNodeAnnotation(Node node, bool isThemeChange = false)
     {
         int padding = 10;
 
         if (node.Annotations == null || node.Annotations.Count == 0)
             return;
 
-        if (node.Annotations.Count >= 2)
+        bool isLeaf = node.AdditionalInfo != null && node.AdditionalInfo.ContainsKey("isLeaf") && (bool)node.AdditionalInfo["isLeaf"];
+
+        if (node.Annotations.Count >= 2 && !isLeaf)
         {
             var keyAnnotation = node.Annotations[0];
-            keyAnnotation.ID = "Text";
+            keyAnnotation.ID = "Key";
             keyAnnotation.Style = new TextStyle
             {
-                Color = "blue",
+                Color = ThemeService.CurrentThemeSettings.TextKeyColor,
                 TextAlign = TextAlign.Left,
             };
 
@@ -527,69 +569,172 @@ IsModal="true" @bind-Visible="isDialogVisible">
             countAnnotation.ID = "Count";
             countAnnotation.Style = new TextStyle
             {
-                Color = "gray",
+                Color = ThemeService.CurrentThemeSettings.TextValueColor,
                 TextAlign = TextAlign.Right,
             };
 
             if (showChildCount)
             {
+                // Show Count Annotation
                 countAnnotation.Visibility = true;
 
-                // Left-align the first annotation
+                // Left-align the Key annotation
                 keyAnnotation.Offset = new DiagramPoint { X = 0, Y = 0.5 };
                 keyAnnotation.HorizontalAlignment = HorizontalAlignment.Left;
                 keyAnnotation.Margin = new DiagramThickness { Left = padding };
 
-                // Right-align the second annotation
+                // Right-align the Count annotation
                 countAnnotation.Offset = new DiagramPoint { X = 1, Y = 0.5 };
                 countAnnotation.HorizontalAlignment = HorizontalAlignment.Right;
-                countAnnotation.Margin = new DiagramThickness 
-                { 
-                    Right = (showExpandCollapseIcon ? expandCollapseIconWidth : 0) + padding 
+                countAnnotation.Margin = new DiagramThickness
+                {
+                    Right = (showExpandCollapseIcon ? expandCollapseIconWidth : 0) + padding
                 };
             }
             else
             {
-                keyAnnotation.Offset = new DiagramPoint { X = 0, Y = 0.5 };
-                keyAnnotation.HorizontalAlignment = HorizontalAlignment.Auto;
-                keyAnnotation.Margin = new DiagramThickness { Left = padding };
+                if (showExpandCollapseIcon)
+                {
+                    keyAnnotation.Offset = new DiagramPoint { X = 0, Y = 0.5 };
+                    keyAnnotation.HorizontalAlignment = HorizontalAlignment.Auto;
+                    keyAnnotation.Margin = new DiagramThickness { Left = padding };
+                }
+                else
+                {
+                    keyAnnotation.Offset = new DiagramPoint { X = 0.5, Y = 0.5 };
+                    keyAnnotation.HorizontalAlignment = HorizontalAlignment.Center;
+                    keyAnnotation.Margin = new DiagramThickness();
+                }
                 // Hide Count Annotation
                 countAnnotation.Visibility = false;
             }
         }
-        else if (node.Annotations.Count == 1 && (bool)node?.AdditionalInfo["isLeaf"])
+        else if (isLeaf)
         {
-            var leafNodeAnnotation = node.Annotations[0];
-            leafNodeAnnotation.ID = "LeafNode";
-            leafNodeAnnotation.UseTemplate = true;
-            leafNodeAnnotation.Width = node.Width;
-            leafNodeAnnotation.Height = node.Height;
+            await AdjustLeafNodeAnnotations(node, padding, isThemeChange);
         }
     }
+
+    private async Task AdjustLeafNodeAnnotations(Node node, int padding, bool isThemeChange)
+    {
+        double nodeWidth = node.Width ?? 100;
+        double keyMeasuredWidth = 0.0;
+
+        foreach (var annotation in node.Annotations)
+        {
+            var size = await JS.InvokeAsync<Dictionary<string, double>>("getTextSize", annotation.Content, "12px Consolas");
+            double contentWidth = size["width"];
+            string rawValue = annotation.Content?.ToString() ?? "";
+
+            if (annotation.ID.StartsWith("Key"))
+            {
+                annotation.Offset = new DiagramPoint
+                {
+                    X = padding / nodeWidth,
+                    Y = annotation.Offset.Y
+                };
+                annotation.HorizontalAlignment = HorizontalAlignment.Left;
+                keyMeasuredWidth = contentWidth;
+            }
+            else if (annotation.ID.StartsWith("Value"))
+            {
+                string displayValue = FormatDisplayValue(rawValue);
+                annotation.Content = displayValue;
+                annotation.Offset = new DiagramPoint
+                {
+                    X = (padding + keyMeasuredWidth) / nodeWidth,
+                    Y = annotation.Offset.Y
+                };
+                annotation.HorizontalAlignment = HorizontalAlignment.Left;
+                keyMeasuredWidth = 0;
+            }
+
+            ApplyAnnotationStyle(annotation, rawValue);
+        }
+    }
+
+    private string DetermineValueStyle(string rawValue)
+    {
+        if (int.TryParse(rawValue, out _) || double.TryParse(rawValue, out _))
+        {
+            return ThemeService.CurrentThemeSettings.NumericColor;
+        }
+        else if (bool.TryParse(rawValue, out bool boolVal))
+        {
+            return boolVal ? ThemeService.CurrentThemeSettings.BooleanColor : "red";
+        }
+        return ThemeService.CurrentThemeSettings.TextValueColor;
+    }
+
+    private string FormatDisplayValue(string rawValue)
+    {
+        bool isString = !int.TryParse(rawValue, out _) && !double.TryParse(rawValue, out _) && !bool.TryParse(rawValue, out bool boolVal);
+
+        if (!isString)
+        {
+            if (bool.TryParse(rawValue, out boolVal))
+            {
+                return boolVal.ToString().ToLower();
+            }
+        }
+
+        if (isString && !string.IsNullOrWhiteSpace(rawValue))
+        {
+            if (rawValue.StartsWith("\"") && rawValue.EndsWith("\""))
+            {
+                return rawValue;
+            }
+            return $"\"{rawValue}\"";
+        }
+
+        return rawValue;
+    }
+    private void ApplyAnnotationStyle(Annotation annotation, string rawValue)
+    {
+        if (annotation.ID.StartsWith("Key"))
+        {
+            annotation.Style = new TextStyle
+                {
+                    Color = ThemeService.CurrentThemeSettings.TextKeyColor
+                };
+        }
+        else if (annotation.ID.StartsWith("Value"))
+        {
+            string valueStyle = DetermineValueStyle(rawValue);
+            annotation.Style = new TextStyle
+            {
+                Color = valueStyle
+            };
+        }
+        else if (annotation.ID.StartsWith("Count"))
+        {
+            annotation.Style = new TextStyle
+            {
+                Color = ThemeService.CurrentThemeSettings.TextValueColor
+            };
+        }
+    }
+
     #endregion
 
     #region Popup Dialog
 
     private void OnDiagramClick(ClickEventArgs args)
     {
-        if (args.Element is Node node && node.Data != null && args.ActualObject != null)
+        if (args.Element is Node node && node.Data != null)
         {
             var nodeData = node.Data.GetType().GetProperty("actualdata")?.GetValue(node.Data, null)?.ToString();
             var path = node.Data.GetType().GetProperty("path")?.GetValue(node.Data, null)?.ToString();
 
             if (!string.IsNullOrEmpty(nodeData) && !string.IsNullOrEmpty(path))
             {
-                ShowNodePopup(nodeData, path);
+                selectedNodeContent = nodeData;
+                selectedNodePath = path;
+                isDialogVisible = true;
             }
         }
     }
 
-    private void ShowNodePopup(string nodeContent, string nodePath)
-    {
-        selectedNodeContent = nodeContent;
-        selectedNodePath = nodePath;
-        isDialogVisible = true;
-    }
     private RenderFragment FormatNodeDataInPopup(string content, bool isPath = false) => __builder =>
     {
         if (string.IsNullOrWhiteSpace(content))
@@ -608,7 +753,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
             }
             else
             {
-                __builder.AddAttribute(seq++, "style", "color:#4CAF50;");
+                __builder.AddAttribute(seq++, "style", $"color:{ThemeService.CurrentThemeSettings.PopupValueColor};");
                 __builder.AddContent(seq++, '"' +  content + '"');
             }
             __builder.CloseElement();
@@ -625,8 +770,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 __builder.OpenElement(seq++, "div");
 
                 __builder.OpenElement(seq++, "span");
-                __builder.AddAttribute(seq++, "style", "color:#9C27B0; font-weight:bold; margin-right:5px; margin-left:14px;");
-                __builder.AddContent(seq++, key);
+                __builder.AddAttribute(seq++, "style", $"color:{ThemeService.CurrentThemeSettings.PopupKeyColor}; font-weight:550; margin-right:5px; margin-left:14px;"); __builder.AddContent(seq++, key);
                 __builder.CloseElement();
 
                 __builder.OpenElement(seq++, "span");
@@ -635,7 +779,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 __builder.CloseElement();
 
                 __builder.OpenElement(seq++, "span");
-                __builder.AddAttribute(seq++, "style", "color:#4CAF50;");
+                __builder.AddAttribute(seq++, "style", $"color:{ThemeService.CurrentThemeSettings.PopupValueColor};");
                 __builder.AddContent(seq++, value);
                 __builder.CloseElement();
 
@@ -675,7 +819,6 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
                 if (bool.TryParse(value, out boolResult))
                 {
-                    // Convert boolean value to lowercase string equivalent
                     value = boolResult.ToString().ToLower();
                 }
                 else
@@ -708,7 +851,6 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task CopyNodeData(string data, bool isPath = false)
     {
-
         if (isPath)
         {
             await JS.InvokeVoidAsync("navigator.clipboard.writeText", AddCurlyBracesAroundRoot(data));
@@ -746,6 +888,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
         result += "}";
         return result;
     }
+
     #endregion
 
     #region Nav Menu Actions
@@ -839,7 +982,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
         await UpdateDiagramElements();
 
-        monacoEditor.UpdateOptions(new EditorUpdateOptions()
+        await monacoEditor.UpdateOptions(new EditorUpdateOptions()
         {
             Theme = $"vs-{theme}"
         });
@@ -849,16 +992,26 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task UpdateDiagramElements()
     {
-        await JS.InvokeVoidAsync("changeDiagramBackground", ThemeService.CurrentThemeSettings.DiagramBackgroundColor);
-        if (snapConstraints == SnapConstraints.ShowLines)
-        {
-            diagram.SnapSettings = new SnapSettings
-            {
-                    HorizontalGridLines = new HorizontalGridLines { LineColor = ThemeService.CurrentThemeSettings.GridlinesColor },
-                    VerticalGridLines = new VerticalGridLines { LineColor = ThemeService.CurrentThemeSettings.GridlinesColor },
-            };
-        }
         await UpdateDefaultNodeStyles();
+
+        foreach(Node node in diagram.Nodes)
+        {
+            if (node.Annotations != null || node.Annotations?.Count > 0)
+            {
+                foreach (var annotation in node.Annotations)
+                {
+                    string rawValue = annotation.Content?.ToString() ?? "";
+                    ApplyAnnotationStyle(annotation, rawValue);
+                }
+            }
+        }
+        
+        foreach(Connector connector in diagram.Connectors)
+        {
+            UpdateConnectorStyle(connector);
+        }
+
+        await JS.InvokeVoidAsync("changeDiagramBackground", ThemeService.CurrentThemeSettings.DiagramBackgroundColor);
     }
 
     #endregion
@@ -1139,7 +1292,6 @@ IsModal="true" @bind-Visible="isDialogVisible">
         display: flex;
         align-items: center;
         gap: 6px;
-        font-size: 14px;
     }
 
     .status-icon {
@@ -1159,20 +1311,23 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     /* For WebKit-based browsers like Chrome and Safari */
     ::-webkit-scrollbar {
-        width: 0px; /* Remove scrollbar width for vertical */
-        height: 0px; /* Remove scrollbar height for horizontal */
+        width: 0px;
+        height: 0px;
     }
 
     /* To hide scrollbars but keep scroll function */
     .scroll-hide {
-        overflow: scroll; /* Sets element to be scrollable */
+        overflow: scroll;
         scrollbar-width: none; /* For Firefox */
         -ms-overflow-style: none; /* For IE and Edge */
     }
 
-    /* Add this only in case you still want scrolling on hidden scrollbar */
     .scroll-hide::-webkit-scrollbar {
         display: none; /* Hides scrollbar */
+    }
+
+    .e-diagram{
+        background-color: #F8F9FA;
     }
 
 </style>

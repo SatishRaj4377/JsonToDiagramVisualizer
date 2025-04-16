@@ -20,18 +20,21 @@ namespace BlazorJSONToDiagramVisualizer.Components.Helper_Class
         public string ChildCountColor { get; set; }
         public string BooleanColor { get; set; }
         public string NumericColor { get; set; }
+        public string PopupKeyColor { get; set; }
+        public string PopupValueColor { get; set; }
+        public string PopupContentBGColor { get; set; }
 
         public ThemeSettings(string theme = "light")
         {
             if (theme == "light")
             {
                 CssUrl = "https://cdn.syncfusion.com/blazor/29.1.33/styles/material.css";
-                DiagramBackgroundColor = "transparent";
+                DiagramBackgroundColor = "#F8F9FA";
                 GridlinesColor = "#EBE8E8";
                 HighlightColor = "#e7f0e6";
                 NodeFillColor = "rgb(255, 255, 255)";
                 NodeStrokeColor = "rgb(188, 190, 192)";
-                TextKeyColor = "blue";
+                TextKeyColor = "#7950f2";
                 TextValueColor = "rgb(83, 83, 83)";
                 TextValueNullColor = "rgb(41, 41, 41)";
                 ExpandIconFillColor = "#e0dede";
@@ -41,6 +44,9 @@ namespace BlazorJSONToDiagramVisualizer.Components.Helper_Class
                 ChildCountColor = "rgb(41, 41, 41)";
                 BooleanColor = "rgb(74, 145, 67)";
                 NumericColor = "rgb(182, 60, 30)";
+                PopupKeyColor = "#5C940D";
+                PopupValueColor = "#1864AB";
+                PopupContentBGColor = "#F8F9FA";
             }
             else
             {
@@ -50,7 +56,7 @@ namespace BlazorJSONToDiagramVisualizer.Components.Helper_Class
                 HighlightColor = "rgb(32, 97, 51, 0.5)";
                 NodeFillColor = "rgb(41, 41, 41)";
                 NodeStrokeColor = "rgb(66, 66, 66)";
-                TextKeyColor = "rgb(107, 176, 246)";
+                TextKeyColor = "#4dabf7";
                 TextValueColor = "rgb(207, 227, 225)";
                 TextValueNullColor = "rgb(151, 150, 149)";
                 ExpandIconFillColor = "#1e1e1e";
@@ -60,6 +66,9 @@ namespace BlazorJSONToDiagramVisualizer.Components.Helper_Class
                 ChildCountColor = "rgb(255, 255, 255)";
                 BooleanColor = "rgb(61, 226, 49)";
                 NumericColor = "rgb(232, 196, 121)";
+                PopupKeyColor = "#A5D8FF";
+                PopupValueColor = "#40C057";
+                PopupContentBGColor = "#1A1A1A";
             }
         }
     }
