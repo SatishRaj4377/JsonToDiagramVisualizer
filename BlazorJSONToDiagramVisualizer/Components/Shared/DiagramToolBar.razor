@@ -1,9 +1,10 @@
 ﻿@using Syncfusion.Blazor.Buttons
 @using Syncfusion.Blazor.Inputs
 @using Syncfusion.Blazor.Navigations
+@inject ThemeService ThemeService
 
 
-<div class="toolbar-container">
+<div class="toolbar-container @(ThemeService.CurrentTheme)">
     <SfToolbar CssClass="toolbar-buttons">
 
         <ToolbarItems>
@@ -12,8 +13,6 @@
             <ToolbarItem PrefixIcon="e-icons e-zoom-to-fit" CssClass="e-flat toolbar-btn" OnClick="@(e => OnToolClick("fitToPage"))" TooltipText="Fit To Page"></ToolbarItem>
             <ToolbarItem PrefixIcon="e-icons e-zoom-in" CssClass="e-flat toolbar-btn" OnClick="@(e => OnToolClick("zoomIn"))" TooltipText="Zoom In"></ToolbarItem>
             <ToolbarItem PrefixIcon="e-icons e-zoom-out" CssClass="e-flat toolbar-btn" OnClick="@(e => OnToolClick("zoomOut"))" TooltipText="Zoom Out"></ToolbarItem>
-
-
 
         </ToolbarItems>
     </SfToolbar>
@@ -56,65 +55,38 @@
         align-items: center;
         border-radius: 3px;
     }
+    
+    .toolbar-container.dark .e-toolbar {
+        border: 0;
+        background: none;
+    }
 
-/*     .e-toolbar .e-toolbar-item:not(.e-separator):not(.e-spacer) {
-        height: inherit;
-        min-width: 28px;
-        padding: 2px;
-    } */
+    .toolbar-container .e-toolbar .e-toolbar-items {
+        background: transparent !important;
+        margin: 0;
+        padding: 0;
+    }
+
+    .e-toolbar .e-toolbar-item .e-tbar-btn{
+        background: #343A401A !important;
+    }
 
     .toolbar-search {
         flex: 1;
         margin-left: 10px;
     }
 
-/*     .no-focus-outline.e-input-group:focus-within,
-    .no-focus-outline.e-input-group.e-control-wrapper:focus-within {
-        outline: none !important;
-        box-shadow: none !important;
+    .toolbar-container.light .e-input-group, .e-input-group.e-control-wrapper {
+        border-bottom: 1.8px solid #343A401A !important;
+    }
+    
+    .toolbar-container.dark .e-input-group, .e-input-group.e-control-wrapper {
+        border-bottom: 1.8px solid #F8F9FA !important;
     }
 
-    .no-focus-outline.e-input-group.e-input-focus::after,
-    .no-focus-outline.e-input-group.e-control-wrapper.e-input-focus::after {
-        background: none !important;
+    /* Bottom Border of Textbox */
+    .e-input-group:not(.e-float-icon-left):not(.e-float-input)::before, .e-input-group:not(.e-float-icon-left):not(.e-float-input)::after, .e-input-group.e-float-icon-left:not(.e-float-input) .e-input-in-wrap::before, .e-input-group.e-float-icon-left:not(.e-float-input) .e-input-in-wrap::after, .e-input-group.e-control-wrapper:not(.e-float-icon-left):not(.e-float-input)::before, .e-input-group.e-control-wrapper:not(.e-float-icon-left):not(.e-float-input)::after, .e-input-group.e-control-wrapper.e-float-icon-left:not(.e-float-input) .e-input-in-wrap::before, .e-input-group.e-control-wrapper.e-float-icon-left:not(.e-float-input) .e-input-in-wrap::after, .e-float-input.e-input-group:not(.e-float-icon-left) .e-float-line::before, .e-float-input.e-input-group:not(.e-float-icon-left) .e-float-line::after, .e-float-input.e-input-group.e-float-icon-left .e-input-in-wrap .e-float-line::before, .e-float-input.e-input-group.e-float-icon-left .e-input-in-wrap .e-float-line::after, .e-float-input.e-control-wrapper.e-input-group:not(.e-float-icon-left) .e-float-line::before, .e-float-input.e-control-wrapper.e-input-group:not(.e-float-icon-left) .e-float-line::after, .e-float-input.e-control-wrapper.e-input-group.e-float-icon-left .e-input-in-wrap .e-float-line::before, .e-float-input.e-control-wrapper.e-input-group.e-float-icon-left .e-input-in-wrap .e-float-line::after, .e-filled.e-input-group.e-float-icon-left:not(.e-float-input)::before, .e-filled.e-input-group.e-float-icon-left:not(.e-float-input)::after, .e-filled.e-input-group.e-control-wrapper.e-float-icon-left:not(.e-float-input)::before, .e-filled.e-input-group.e-control-wrapper.e-float-icon-left:not(.e-float-input)::after, .e-filled.e-float-input.e-input-group.e-float-icon-left .e-float-line::before, .e-filled.e-float-input.e-input-group.e-float-icon-left .e-float-line::after, .e-filled.e-float-input.e-control-wrapper.e-input-group.e-float-icon-left .e-float-line::before, .e-filled.e-float-input.e-control-wrapper.e-input-group.e-float-icon-left .e-float-line::after{
+        background: #A020F0;
     }
-
-    .no-focus-outline.e-input-group:target-within,
-    .no-focus-outline.e-input-group.e-control-wrapper:focus-within {
-        outline: none !important;
-        box-shadow: none !important;
-    }
-
-    .no-focus-outline.e-input-group.e-input-focus::after,
-    .no-focus-outline.e-input-group.e-control-wrapper.e-input-focus::after {
-        background: none !important;
-    } */
-
-    /* Add bottom border in textbox */
-/*     .e-input-group, .e-input-group.e-control-wrapper {
-        background-color: transparent !important;
-        border-bottom: 1px solid gray !important;
-        outline: none;
-        outline-width: 0px;
-        box-shadow: none;
-    } */
-
-    /* Remove Outer border of textbox */
-/*     .e-input-group, .e-input-group.e-success, .e-input-group.e-warning, .e-input-group.e-error, .e-input-group.e-control-wrapper, .e-input-group.e-control-wrapper.e-success, .e-input-group.e-control-wrapper.e-warning, .e-input-group.e-control-wrapper.e-error {
-        border: none;
-    } */
-
-    /* Remove search icon Border in textbox */
-/*     .e-input-group .e-input-group-icon,
-    .e-input-group.e-control-wrapper .e-input-group-icon {
-        border: none;
-    } */
-/* 
-    .remove-hover-effect.e-input-group .e-input-group-icon.e-icons.e-search:hover,
-    .remove-hover-effect.e-input-group.e-control-wrapper .e-input-group-icon.e-icons.e-search:hover {
-        background-color: inherit;
-        cursor: default;
-    } */
-
 
 </style>
