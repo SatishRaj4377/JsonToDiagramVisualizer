@@ -313,7 +313,6 @@ IsModal="true" @bind-Visible="isDialogVisible">
     {
         if (obj is Node node)
         {
-            node.Constraints = (NodeConstraints.Default | NodeConstraints.HideThumbs | NodeConstraints.ReadOnly) & ~(NodeConstraints.Rotate | NodeConstraints.Resize | NodeConstraints.Delete);
             node.Style = new ShapeStyle { Fill = ThemeService.CurrentThemeSettings.NodeFillColor, StrokeColor = ThemeService.CurrentThemeSettings.NodeStrokeColor, StrokeWidth = 1 };
 
             if (node.ID == "main-root")
@@ -410,7 +409,6 @@ IsModal="true" @bind-Visible="isDialogVisible">
     {
         if (obj is Connector connector)
         {
-            connector.Constraints = (ConnectorConstraints.Default | ConnectorConstraints.ReadOnly) & ~(ConnectorConstraints.DragSourceEnd | ConnectorConstraints.DragTargetEnd | ConnectorConstraints.Select);
             UpdateConnectorStyle(connector);
         }
     }
