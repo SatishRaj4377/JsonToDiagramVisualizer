@@ -1,6 +1,7 @@
 ﻿@using Syncfusion.Blazor.SplitButtons
+@inject ThemeService ThemeService
 
-<SfDropDownButton CssClass="e-caret-hide hamburger-btn">
+<SfDropDownButton CssClass="@ButtonCss">
     <Syncfusion.Blazor.Buttons.SfIcon IconCss="e-icons e-menu"/>
     <DropDownMenuItems>
         <DropDownMenuItem Text="Export As Image" IconCss="e-icons e-export" Id="export-image" />
@@ -11,9 +12,22 @@
 </SfDropDownButton>
 
 @code {
+    private string ButtonCss = "e-caret-hide hamburger-btn light";
+
     [Parameter] public EventCallback<string> OnHamburgerMenuAction { get; set; }
 
     [Parameter] public bool IsGraphCollapsed { get; set; } = false;
+
+    protected override void OnInitialized()
+    {
+        ThemeService.OnThemeChanged += HandleThemeChanged;
+    }
+
+    private void HandleThemeChanged()
+    {
+        ButtonCss = $"e-caret-hide hamburger-btn {ThemeService.CurrentTheme}";
+        InvokeAsync(StateHasChanged);
+    }
 
     private async Task OnHamburgerMenuItemClick(MenuEventArgs args)
     {
@@ -32,9 +46,7 @@
         top: 10px;
         left: 10px;
         z-index: 100;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
         border-radius: 3px;
-        padding: 4px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -45,13 +57,20 @@
         border: none;
     }
 
+    .hamburger-btn.light{
+        background: #343A401A;
+    }
+    
+    .hamburger-btn.dark{
+        background: #3A3A3A;
+    }
+
     .hamburger-btn.e-dropdown-popup ul{
         border: none;
     }
 
     .hamburger-btn .e-icons {
-        font-size: 18px;
+        font-size: 16px;
     }
-
 
 </style>
