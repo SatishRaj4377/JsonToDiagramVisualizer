@@ -32,7 +32,7 @@
 
             @* Diagram Control *@
             <SfDiagramComponent @ref="diagram"
-                InteractionController="DiagramInteractions.ZoomPan"
+                InteractionController="DiagramInteractions.ZoomPan | DiagramInteractions.SingleSelect"
                 Click="OnDiagramClick"
                 Width="100%" Height="100%"
                 Created="OnCreated"
@@ -329,6 +329,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
     {
         if (obj is Node node)
         {
+            node.Constraints = NodeConstraints.Default & ~NodeConstraints.Select;
             node.Style = new ShapeStyle { Fill = ThemeService.CurrentThemeSettings.NodeFillColor, StrokeColor = ThemeService.CurrentThemeSettings.NodeStrokeColor, StrokeWidth = 1 };
 
             if (node.ID == "main-root")
@@ -460,9 +461,13 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 nodeBase.Add(conn);
             }
 
+            diagram.BeginUpdate();
+
             await diagram.AddDiagramElementsAsync(nodeBase);
             await diagram.DoLayoutAsync();
             await UpdateDefaultNodeStyles();
+
+            await diagram.EndUpdateAsync();
 
             diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
         }
@@ -738,13 +743,14 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private void OnDiagramClick(ClickEventArgs args)
     {
-        if (args.Element is Node node && node.Data != null)
+        if (args.Element is Node node && node.Data != null && args.ActualObject != null)
         {
             var nodeData = node.Data.GetType().GetProperty("actualdata")?.GetValue(node.Data, null)?.ToString();
             var path = node.Data.GetType().GetProperty("path")?.GetValue(node.Data, null)?.ToString();
 
             if (!string.IsNullOrEmpty(nodeData) && !string.IsNullOrEmpty(path))
             {
+                // Show Popup
                 selectedNodeContent = nodeData;
                 selectedNodePath = path;
                 isDialogVisible = true;
@@ -1132,8 +1138,10 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task RefreshDiagramLayout()
     {
+        diagram.BeginUpdate();
         await diagram.RefreshDataSourceAsync();
         await diagram.DoLayoutAsync();
+        await diagram.EndUpdateAsync();
     }
 
     #endregion
