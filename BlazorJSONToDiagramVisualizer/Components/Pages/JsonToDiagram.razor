@@ -32,21 +32,37 @@
 
             @* Diagram Control *@
             <SfDiagramComponent @ref="diagram"
-            InteractionController="DiagramInteractions.ZoomPan"
-            Click="OnDiagramClick"
-            Width="100%" Height="100%"
-            Created="OnCreated"
-            NodeCreating="OnNodeCreating"
-            ConnectorCreating="OnConnectorCreating">
+                InteractionController="DiagramInteractions.ZoomPan"
+                Click="OnDiagramClick"
+                Width="100%" Height="100%"
+                Created="OnCreated"
+                NodeCreating="OnNodeCreating"
+                ConnectorCreating="OnConnectorCreating">
                 <Layout Type="LayoutType.HierarchicalTree"
-                SamePoint="false"
-                @bind-Orientation ="@layoutOrientation"
-                HorizontalSpacing="30"
-                VerticalSpacing="100" />
+                    SamePoint="false"
+                    @bind-Orientation ="@layoutOrientation"
+                    HorizontalSpacing="30"
+                    VerticalSpacing="100" />
                 <SnapSettings @bind-Constraints ="@snapConstraints">
                     <HorizontalGridLines @bind-LineColor="@ThemeService.CurrentThemeSettings.GridlinesColor"/>
                     <VerticalGridLines @bind-LineColor="@ThemeService.CurrentThemeSettings.GridlinesColor"/>
                 </SnapSettings>
+                <DiagramTemplates>
+                    <DiagramExpandIconTemplate>
+                           @{
+                                <div style="height: 100%; width: 100%; background-color: @(ThemeService.CurrentThemeSettings.ExpandIconFillColor);border-radius: 0 @(nodeCornerRadius)px @(nodeCornerRadius)px 0; margin-top:-.033rem; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+                                    <span style="color: @(ThemeService.CurrentThemeSettings.ExpandIconColor); font-size: 16px;">+</span>
+                                </div>
+                            }
+                        </DiagramExpandIconTemplate>
+                        <DiagramCollapseIconTemplate>
+                            @{
+                                <div style="height: 100%; width: 100%; background-color: @(ThemeService.CurrentThemeSettings.ExpandIconFillColor); border-radius: 0 @(nodeCornerRadius)px @(nodeCornerRadius)px 0; margin-top: -.033rem; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+                                    <span style="color: @(ThemeService.CurrentThemeSettings.ExpandIconColor); font-size: 16px;">-</span>
+                                </div>
+                            }
+                        </DiagramCollapseIconTemplate>
+                    </DiagramTemplates>
             </SfDiagramComponent>
 
             @* Tool Bar Control *@
@@ -360,13 +376,10 @@ IsModal="true" @bind-Visible="isDialogVisible">
         {
             node.ExpandIcon = new DiagramExpandIcon()
             {
-                Shape = DiagramExpandIcons.Minus,
+                Shape = DiagramExpandIcons.Template,
                 Width = expandCollapseIconWidth,
                 Height = node.Height ?? 50,
                 HorizontalAlignment = HorizontalAlignment.Right,
-                CornerRadius = nodeCornerRadius,
-                BorderColor = ThemeService.CurrentThemeSettings.ExpandIconBorder,
-                Fill = ThemeService.CurrentThemeSettings.ExpandIconFillColor
             };
             UpdateExpandCollapseIconOffset(node.ExpandIcon);
         }
@@ -374,13 +387,10 @@ IsModal="true" @bind-Visible="isDialogVisible">
         {
             node.CollapseIcon = new DiagramCollapseIcon()
             {
-                Shape = DiagramCollapseIcons.Plus,
+                Shape = DiagramCollapseIcons.Template,
                 Width = expandCollapseIconWidth,
                 Height = node.Height ?? 50,
                 HorizontalAlignment = HorizontalAlignment.Right,
-                CornerRadius = nodeCornerRadius,
-                BorderColor = ThemeService.CurrentThemeSettings.ExpandIconBorder,
-                Fill = ThemeService.CurrentThemeSettings.ExpandIconFillColor, 
             };
             UpdateExpandCollapseIconOffset(node.CollapseIcon);
         }
@@ -915,7 +925,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 await ToggleItemCount();
                 break;
             case "toggle-expand":
-                await ToggleExpandCollapse();
+                await ToggleExpandCollapseIcon();
                 break;
             case "light":
             case "dark":
@@ -974,7 +984,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
         await RefreshDiagramLayout();
     }
 
-    private async Task ToggleExpandCollapse()
+    private async Task ToggleExpandCollapseIcon()
     {
         showExpandCollapseIcon = !showExpandCollapseIcon;
         await RefreshDiagramLayout();
@@ -1010,16 +1020,6 @@ IsModal="true" @bind-Visible="isDialogVisible">
                     ApplyAnnotationStyle(annotation, rawValue);
                 }
             }
-            if (node.ExpandIcon != null)
-            {
-                node.ExpandIcon.BorderColor = ThemeService.CurrentThemeSettings.ExpandIconBorder;
-                node.ExpandIcon.Fill = ThemeService.CurrentThemeSettings.ExpandIconFillColor;                
-            }
-            if (node.CollapseIcon != null)
-            {
-                node.CollapseIcon.BorderColor = ThemeService.CurrentThemeSettings.ExpandIconBorder;
-                node.CollapseIcon.Fill = ThemeService.CurrentThemeSettings.ExpandIconFillColor;
-            }
         }
         
         foreach(Connector connector in diagram.Connectors)
@@ -1028,6 +1028,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
         }
 
         await JS.InvokeVoidAsync("changeDiagramBackground", ThemeService.CurrentThemeSettings.DiagramBackgroundColor);
+
+        await RefreshDiagramLayout();
     }
 
     #endregion
@@ -1090,7 +1092,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
             var rootNodes = nodes.Where(node => node.InEdges.Count == 0).ToList();
             foreach (var node in rootNodes)
             {
-                if (node.ID == "main-root")
+                // Check if node doesn't have an expand icon or its shape is 'None'
+                if (node.ExpandIcon == null || node.ExpandIcon.Shape == DiagramExpandIcons.None)
                 {
                     foreach (var edgeId in node.OutEdges)
                     {

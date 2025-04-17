@@ -51,7 +51,7 @@
                 TextValueColor = "rgb(83, 83, 83)";
                 TextValueNullColor = "rgb(41, 41, 41)";
                 ExpandIconFillColor = "#e0dede";
-                ExpandIconColor = "black";
+                ExpandIconColor = " rgb(46, 51, 56)";
                 ExpandIconBorder = "rgb(188, 190, 192)";
                 ConnectorStrokeColor = "rgb(188, 190, 192)";
                 ChildCountColor = "rgb(41, 41, 41)";
@@ -74,7 +74,7 @@
                 TextValueNullColor = "rgb(151, 150, 149)";
                 ExpandIconFillColor = "#1e1e1e";
                 ExpandIconBorder = "rgb(66, 66, 66)";
-                ExpandIconColor = "white";
+                ExpandIconColor = "rgb(220, 221, 222)";
                 ConnectorStrokeColor = "rgb(66, 66, 66)";
                 ChildCountColor = "rgb(255, 255, 255)";
                 BooleanColor = "rgb(61, 226, 49)";
