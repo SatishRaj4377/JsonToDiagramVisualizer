@@ -311,9 +311,15 @@ IsModal="true" @bind-Visible="isDialogVisible">
     {
         jsonValue = await monacoEditor.GetValue();
         if (string.IsNullOrEmpty(jsonValue.Trim()))
+        {
             isJsonValidStatus = true;
+        }
         else
+        {
+            diagram.BeginUpdate();
             await ParseAndUpdateDiagram();
+            await diagram.EndUpdateAsync();
+        }
     }
 
     #endregion
@@ -322,7 +328,9 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task OnCreated()
     {
+        diagram.BeginUpdate();
         await ParseAndUpdateDiagram();
+        await diagram.EndUpdateAsync();
     }
 
     private async Task OnNodeCreating(IDiagramObject obj)
@@ -461,13 +469,9 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 nodeBase.Add(conn);
             }
 
-            diagram.BeginUpdate();
-
             await diagram.AddDiagramElementsAsync(nodeBase);
             await diagram.DoLayoutAsync();
             await UpdateDefaultNodeStyles();
-
-            await diagram.EndUpdateAsync();
 
             diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
         }
