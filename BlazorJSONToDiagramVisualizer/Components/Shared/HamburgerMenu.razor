@@ -6,7 +6,11 @@
     <DropDownMenuItems>
         <DropDownMenuItem Text="Export As Image" IconCss="e-icons e-export" Id="export-image" />
         <DropDownMenuItem Text="Rotate Layout" IconCss="e-icons e-refresh" Id="rotate-layout" />
-        <DropDownMenuItem Text="@(IsGraphCollapsed ? "Expand Graph" : "Collapse Graph")" IconCss="e-icons e-collapse-2" Id="expand-graph" />
+        <DropDownMenuItem 
+            Text="@(IsGraphCollapsed ? "Expand Graph" : "Collapse Graph")" 
+            IconCss="@(IsGraphCollapsed ? "e-icons e-expand" : "e-icons e-collapse-2")" 
+            Id="expand-graph" 
+        />
     </DropDownMenuItems>
     <DropDownButtonEvents ItemSelected="OnHamburgerMenuItemClick" />
 </SfDropDownButton>
