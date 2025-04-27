@@ -337,24 +337,49 @@ public static class JsonDiagramParser
         }
     }
 
-    // Returns the child count for a JSON object or array.
+    /// <summary>
+    /// Returns count of children for a JSON object or array:
+    ///   - if any primitives exist, they collapse into 1 “leaf”
+    ///   - each array property adds 1
+    ///   - each object property adds 1
+    /// </summary>
     private static int GetObjectLength(JsonElement element)
     {
-        if (element.ValueKind != JsonValueKind.Object && element.ValueKind != JsonValueKind.Array)
-            return 0;
-        if (element.ValueKind == JsonValueKind.Array)
-            return element.GetArrayLength();
-        var keys = element.EnumerateObject().ToList();
-        if (keys.Count == 1)
-            return keys.Count;
-        int nestedCount = 0;
-        foreach (var prop in keys)
+        // neither object nor array ⇒ no children
+        if (element.ValueKind != JsonValueKind.Object
+         && element.ValueKind != JsonValueKind.Array)
         {
-            if (prop.Value.ValueKind == JsonValueKind.Object || prop.Value.ValueKind == JsonValueKind.Array)
-                nestedCount++;
+            return 0;
         }
-        return nestedCount > 0 ? 1 + nestedCount : 1;
+
+        // an array ⇒ one child per array item
+        if (element.ValueKind == JsonValueKind.Array)
+        {
+            return element.GetArrayLength();
+        }
+
+        // it’s an object ⇒ count its properties by kind
+        var props = element.EnumerateObject().ToList();
+
+        // count how many primitive properties
+        int primitiveCount = props
+          .Count(p => p.Value.ValueKind != JsonValueKind.Object
+                   && p.Value.ValueKind != JsonValueKind.Array);
+
+        // count how many properties are arrays
+        int arrayPropCount = props
+          .Count(p => p.Value.ValueKind == JsonValueKind.Array);
+
+        // count how many properties are nested objects
+        int objectPropCount = props
+          .Count(p => p.Value.ValueKind == JsonValueKind.Object);
+
+        // total = 1 merged‐leaf if any primitives, + one per array‐prop, + one per object‐prop
+        return (primitiveCount > 0 ? 1 : 0)
+             + arrayPropCount
+             + objectPropCount;
     }
+
 
     private static string ConvertUnderScoreToPascalCase(string input)
     {
