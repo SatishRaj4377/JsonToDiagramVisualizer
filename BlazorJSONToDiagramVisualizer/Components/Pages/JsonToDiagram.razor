@@ -32,24 +32,24 @@
 
             @* Diagram Control *@
             <SfDiagramComponent @ref="diagram"
-                InteractionController="DiagramInteractions.ZoomPan | DiagramInteractions.SingleSelect"
-                Click="OnDiagramClick"
-                Width="100%" Height="100%"
-                Created="OnCreated"
-                NodeCreating="OnNodeCreating"
-                ConnectorCreating="OnConnectorCreating">
+            InteractionController="DiagramInteractions.ZoomPan | DiagramInteractions.SingleSelect"
+            Click="OnDiagramClick"
+            Width="100%" Height="100%"
+            Created="OnCreated"
+            NodeCreating="OnNodeCreating"
+            ConnectorCreating="OnConnectorCreating">
                 <Layout Type="LayoutType.HierarchicalTree"
-                    SamePoint="false"
-                    @bind-Orientation ="@layoutOrientation"
-                    HorizontalSpacing="30"
-                    VerticalSpacing="100" />
+                SamePoint="false"
+                @bind-Orientation ="@layoutOrientation"
+                HorizontalSpacing="30"
+                VerticalSpacing="100" />
                 <SnapSettings @bind-Constraints ="@snapConstraints">
                     <HorizontalGridLines @bind-LineColor="@ThemeService.CurrentThemeSettings.GridlinesColor"/>
                     <VerticalGridLines @bind-LineColor="@ThemeService.CurrentThemeSettings.GridlinesColor"/>
                 </SnapSettings>
                 <DiagramTemplates>
                     <DiagramExpandIconTemplate>
-                           @{
+                        @{
                                 <div style="height: 100%; width: 100%; background-color: @(ThemeService.CurrentThemeSettings.ExpandIconFillColor);border-radius: 0 @(nodeCornerRadius)px @(nodeCornerRadius)px 0; margin-top:-.033rem; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
                                     <span style="color: @(ThemeService.CurrentThemeSettings.ExpandIconColor); font-size: 16px;">-</span>
                                 </div>
@@ -63,30 +63,30 @@
                             }
                         </DiagramCollapseIconTemplate>
                     </DiagramTemplates>
-            </SfDiagramComponent>
+                </SfDiagramComponent>
 
-            @* Tool Bar Control *@
-            <DiagramToolBar OnToolBarAction="HandleToolBarAction" />
+                @* Tool Bar Control *@
+                <DiagramToolBar OnToolBarAction="HandleToolBarAction" />
 
+            </div>
         </div>
-    </div>
 
-    @* Bottom Status Bar *@
-    <div class="bottom-bar @(ThemeService.CurrentTheme)">
-        <div class="bottom-bar-content @(ThemeService.CurrentTheme)">
-            <span class="status-message">
-                @if (isJsonValidStatus)
+        @* Bottom Status Bar *@
+        <div class="bottom-bar @(ThemeService.CurrentTheme)">
+            <div class="bottom-bar-content @(ThemeService.CurrentTheme)">
+                <span class="status-message">
+                    @if (isInputValidStatus)
                 {
                     <span>
                         <Syncfusion.Blazor.Buttons.SfIcon IconCss="e-icons e-check-3 status-icon" />
-                        Valid JSON
+                        Valid @(currentEditorInputType.ToString().ToUpper())
                     </span>
                 }
                 else
                 {
                     <span class="invalid-json">
                         <Syncfusion.Blazor.Buttons.SfIcon IconCss="e-icons e-close-6 status-icon" />
-                        Invalid JSON
+                        Invalid @(currentEditorInputType.ToString().ToUpper())
                     </span>
                 }
             </span>
@@ -175,7 +175,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private double windowWidth;
 
     private BlazorMonaco.Editor.StandaloneCodeEditor monacoEditor;
-    private string jsonValue = "";
+    private string editorContent = "";
+    private EditorInputType currentEditorInputType = EditorInputType.json;
 
     private SfDiagramComponent diagram;
     private DiagramObjectCollection<NodeBase> nodeBase = new DiagramObjectCollection<NodeBase>();
@@ -204,7 +205,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private bool isNodePathCopied = false;
 
     private int nodeCount => diagramData.Nodes.Count;
-    private bool isJsonValidStatus = true;
+    private bool isInputValidStatus = true;
     private bool isGraphCollapsed = false;
     private ExportImageDialog exportDialog;
 
@@ -254,7 +255,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
     protected override void OnInitialized()
     {
         // Initialize the Monaco editor with a default JSON value.
-        jsonValue = @"{
+        editorContent = @"{
     ""TestingData"": {
         ""university"": {
             ""name"": ""Global Tech University"",
@@ -291,7 +292,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
         {
             AutomaticLayout = true,
             Language = "json",
-            Value = jsonValue,
+            Value = editorContent,
             FormatOnPaste = true, 
             Placeholder = "Start Typing...",
             Minimap = new EditorMinimapOptions
@@ -309,16 +310,38 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task OnModelContentChange(ModelContentChangedEvent e)
     {
-        jsonValue = await monacoEditor.GetValue();
-        if (string.IsNullOrEmpty(jsonValue.Trim()))
+        editorContent = await monacoEditor.GetValue();
+        if (string.IsNullOrEmpty(editorContent.Trim()))
         {
-            isJsonValidStatus = true;
+            isInputValidStatus = true;
         }
         else
         {
+            await CheckForErrorsInEditor();
+
             diagram.BeginUpdate();
             await ParseAndUpdateDiagram();
             await diagram.EndUpdateAsync();
+        }
+    }
+
+    private async Task CheckForErrorsInEditor()
+    {
+        var model = await monacoEditor.GetModel();
+
+        var markers = await BlazorMonaco.Editor.Global.GetModelMarkers(JS , new()
+            {
+                Owner = "",
+                Resource = model.Uri
+            });
+
+        if (markers.Count > 0)
+        {
+            isInputValidStatus = true;
+        }
+        else
+        {
+            isInputValidStatus = false;
         }
     }
 
@@ -447,12 +470,24 @@ IsModal="true" @bind-Visible="isDialogVisible">
     {
         try
         {
-            using (JsonDocument doc = JsonDocument.Parse(jsonValue))
+            if (currentEditorInputType == EditorInputType.xml)
             {
-                diagramData = JsonDiagramParser.ProcessData(doc.RootElement);
+                editorContent = await monacoEditor.GetValue();
+                diagramData = XmlDiagramParser.ProcessData(editorContent);
+            }
+            else
+            {
+                editorContent = await monacoEditor.GetValue();
+                diagramData = JsonDiagramParser.ProcessData(editorContent);
             }
 
-            isJsonValidStatus = true;
+            if (diagramData != null && diagramData.Nodes.Count == 0 && diagramData.Connectors.Count == 0)
+            {
+                isInputValidStatus = false;
+                return;
+            }
+
+            isInputValidStatus = true;
 
             diagram.Clear();
             nodeBase.Clear();
@@ -462,7 +497,6 @@ IsModal="true" @bind-Visible="isDialogVisible">
             foreach (var node in diagramData.Nodes)
             {
                 nodeBase.Add(node);
-                CreateAnnotationsForLeafNode(node);
             }
             foreach (var conn in diagramData.Connectors)
             {
@@ -471,72 +505,12 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
             await diagram.AddDiagramElementsAsync(nodeBase);
             await diagram.DoLayoutAsync();
-            await UpdateDefaultNodeStyles();
 
             diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
         }
         catch (Exception ex)
         {
-            isJsonValidStatus = false;
             Console.WriteLine($"Error parsing JSON: {ex.Message}");
-        }
-    }
-
-    private void CreateAnnotationsForLeafNode(Node node)
-    {
-        if (node == null || node.Annotations == null || node.Annotations.Count == 0)
-            return;
-
-        // Check if the node is a leaf
-        bool isLeaf = node.AdditionalInfo != null &&
-                      node.AdditionalInfo.ContainsKey("isLeaf") &&
-                      (bool)node.AdditionalInfo["isLeaf"];
-
-        if (!isLeaf) return;
-
-        var originalContent = node.Annotations[0].Content?.ToString();
-        if (string.IsNullOrWhiteSpace(originalContent))
-            return;
-
-        node.Annotations.Clear();
-
-        var lines = originalContent.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        var totalLines = lines.Length;
-        var spacingY = totalLines > 0 ? 1.0 / (totalLines + 1) : 0.5;
-        var currentLine = 1;
-
-        foreach (var line in lines)
-        {
-            var splitIndex = line.IndexOf(':');
-            string key = line;
-            string value = "";
-            if (splitIndex > -1)
-            {
-                key = line.Substring(0, splitIndex + 1).Trim();
-                value = line.Substring(splitIndex + 1).Trim();
-            }
-
-            double offsetY = currentLine * spacingY;
-
-            // Add Key annotation
-            node.Annotations.Add(new ShapeAnnotation
-            {
-                ID = "Key" + line,
-                Content = key,
-                Offset = new DiagramPoint { X = 0, Y = offsetY },
-            });
-
-            // Add Value annotation (only if there's a value)
-            if (!string.IsNullOrEmpty(value))
-            {
-                node.Annotations.Add(new ShapeAnnotation
-                {
-                    ID = "Value" + line,
-                    Content = value,
-                    Offset = new DiagramPoint { X = 1, Y = offsetY },
-                });
-            }
-            currentLine++;
         }
     }
 
@@ -641,19 +615,23 @@ IsModal="true" @bind-Visible="isDialogVisible">
     {
         double nodeWidth = node.Width ?? 100;
         double keyMeasuredWidth = 0.0;
-
+        double totalLines = node?.Annotations?.Count(x => x.ID.StartsWith("Key")) ?? 1;
+        var spacingY = totalLines > 0 ? 1.0 / (totalLines + 1) : 0.5;
+        var currentLine = 1;
         foreach (var annotation in node.Annotations)
         {
             var size = await JS.InvokeAsync<Dictionary<string, double>>("getTextSize", annotation.Content, "12px Consolas");
             double contentWidth = size["width"];
             string rawValue = annotation.Content?.ToString() ?? "";
 
+            double offsetY = currentLine * spacingY;
+
             if (annotation.ID.StartsWith("Key"))
             {
                 annotation.Offset = new DiagramPoint
                 {
                     X = padding / nodeWidth,
-                    Y = annotation.Offset.Y
+                    Y = offsetY
                 };
                 annotation.HorizontalAlignment = HorizontalAlignment.Left;
                 keyMeasuredWidth = contentWidth;
@@ -665,13 +643,15 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 annotation.Offset = new DiagramPoint
                 {
                     X = (padding + 2 + keyMeasuredWidth) / nodeWidth,
-                    Y = annotation.Offset.Y
+                    Y = offsetY
                 };
                 annotation.HorizontalAlignment = HorizontalAlignment.Left;
                 keyMeasuredWidth = 0;
+                currentLine++;
             }
 
             ApplyAnnotationStyle(annotation, rawValue);
+
         }
     }
 
@@ -941,6 +921,10 @@ IsModal="true" @bind-Visible="isDialogVisible">
             case "dark":
                 await ToggleTheme(action);
                 break;
+            case "JSON":
+            case "XML":
+                await ToggleEditortype(action);
+                break;
         }
 
     }
@@ -963,8 +947,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
         {
             try
             {
-                string jsonToExport = jsonValue ?? "{}";
-                await JS.InvokeVoidAsync("exportJsonFile", jsonToExport, "Diagram.json");
+                string exportData = editorContent ?? "{}";
+                await JS.InvokeVoidAsync("exportJsonFile", exportData, "Diagram.json");
             }
             catch (JSException ex)
             {
@@ -974,10 +958,10 @@ IsModal="true" @bind-Visible="isDialogVisible">
     }
 
     [JSInvokable]
-    public async Task ReceiveImportedJson(string jsonContent)
+    public async Task ReceiveImportedJson(string importData)
     {
-        jsonValue = jsonContent;
-        await monacoEditor.SetValue(jsonContent);
+        editorContent = importData;
+        await monacoEditor.SetValue(importData);
     }
 
     private void ToggleGridLines()
@@ -1040,6 +1024,56 @@ IsModal="true" @bind-Visible="isDialogVisible">
         await JS.InvokeVoidAsync("changeDiagramBackground", ThemeService.CurrentThemeSettings.DiagramBackgroundColor);
 
         await RefreshDiagramLayout();
+    }
+
+    private async Task ToggleEditortype(string selectedType)
+    {
+        currentEditorInputType = (EditorInputType)Enum.Parse(typeof(EditorInputType), selectedType.ToLower());
+
+        // change editor language
+        string editorContent = await monacoEditor.GetValue();
+        var model = await monacoEditor.GetModel();
+        await BlazorMonaco.Editor.Global.SetModelLanguage(JS, model, currentEditorInputType.ToString());
+
+        DiagramData? diagramData = null;
+
+        if (currentEditorInputType == EditorInputType.json)
+        {
+            try
+            {
+                diagramData = JsonDiagramParser.ProcessData(editorContent);
+                isInputValidStatus = true;
+            }
+            catch (Exception ex)
+            {
+                isInputValidStatus = false;
+            }
+        }
+        else if (currentEditorInputType == EditorInputType.xml)
+        {
+            try
+            {
+                var xmlDoc = new System.Xml.XmlDocument();
+                // Wrapping the content with a root node for validation
+                xmlDoc.LoadXml($"<root>{editorContent}</root>");
+                diagramData = XmlDiagramParser.ProcessData(editorContent);
+                isInputValidStatus = true;
+            }
+            catch (System.Xml.XmlException)
+            {
+                isInputValidStatus = false;
+            }
+        }
+
+        if (diagramData != null && diagramData.Nodes.Count != 0 && diagramData.Connectors.Count != 0)
+        {
+            await ParseAndUpdateDiagram();
+            isInputValidStatus = true;
+        }
+        else
+        {
+            isInputValidStatus = false;
+        }
     }
 
     #endregion
