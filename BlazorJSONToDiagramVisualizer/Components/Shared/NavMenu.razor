@@ -3,10 +3,10 @@
 @using Syncfusion.Blazor.DropDowns
 @inject ThemeService ThemeService
 
-<div class="navbar-toolbar-container @(ThemeService.CurrentTheme == "dark" ? "navbar-dark" : "navbar-light")" style="padding: 2px 16px; display: flex; align-items: center; justify-content: space-between;">
-    <div class="navbar-title" style="font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 8px; margin-right: 40px;">
+<div class="navbar-toolbar-container @(ThemeService.CurrentTheme == "dark" ? "navbar-dark" : "navbar-light")" style="padding: 2px 16px; display: flex; align-items: center;">
+    <div class="navbar-title" style="font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 8px; margin-right: 10px;">
         <span class="sf-icon-Code"></span>
-        <span>{ } JSON To Diagram Visualizer</span>
+        <span style="width:260px">{ } @EditorType To Diagram</span>
         <SfToolbar>
             <ToolbarItems>
                 <ToolbarItem>
@@ -50,13 +50,14 @@
     </div>
 
 
-    <SfDropDownList TValue="string" TItem="string" DataSource="@Formats" @bind-Value="@SelectedFormat" Width="70px">
+    <SfDropDownList CssClass="select-dropdown" TValue="string" TItem="string" DataSource="@Formats" @bind-Value="@SelectedFormat" Width="70px">
         <DropDownListEvents TValue="string" TItem="string" ValueChange="OnFormatChange" />
     </SfDropDownList>
 </div>
 
 @code {
     [Parameter] public EventCallback<string> OnNavMenuAction { get; set; }
+    [Parameter] public string EditorType { get; set; } = "JSON";
 
     private HashSet<string> ToggledViewItems = new() { "toggle-grid", "toggle-count", "toggle-expand" };
     private string SelectedTheme = "light";
@@ -137,6 +138,11 @@
 
     .navbar-toolbar-container .e-toolbar .e-toolbar-items {
         background-color: transparent;
+    }
+
+    .select-dropdown {
+        border: 0 !important;
+        margin-bottom: -3px !important;
     }
 
 /*     .e-dropdown-btn, .e-dropdown-btn.e-btn {
