@@ -44,6 +44,10 @@
             await TextBoxDropDownObj.AddIconAsync("prepend", "e-icons e-search search-icon");
         }
     }
+    public void ClearSearch()
+    {
+        TextBoxDropDownObj.Value = "";
+    }
 }
 
 <style>
