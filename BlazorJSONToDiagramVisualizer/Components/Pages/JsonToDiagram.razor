@@ -30,6 +30,9 @@
             @* Hamburger Menu *@
             <HamburgerMenu OnHamburgerMenuAction="HandleHamburgerMenuAction" IsGraphCollapsed="@isGraphCollapsed"/>
 
+            @* Loading Screen *@
+            <SfSpinner @ref="spinnerObj" Visible="@showSpinner"></SfSpinner>
+
             @* Diagram Control *@
             <SfDiagramComponent @ref="diagram"
             InteractionController="DiagramInteractions.ZoomPan | DiagramInteractions.SingleSelect"
@@ -165,6 +168,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
 @* Export as Image Popup Dialog  *@
 <ExportImageDialog @ref="exportDialog" OnExport="HandleExportDiagramAsImage" />
 
+
 @code {
     #region fields
 
@@ -209,6 +213,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private bool isGraphCollapsed = false;
     private ExportImageDialog exportDialog;
 
+    private SfSpinner spinnerObj;
+    private bool showSpinner = true;
     #endregion
 
     #region Splitter
@@ -468,6 +474,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task ParseAndUpdateDiagram()
     {
+        showSpinner = true;
         try
         {
             if (currentEditorInputType == EditorInputType.xml)
@@ -507,6 +514,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
             await diagram.DoLayoutAsync();
 
             diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
+            showSpinner = false;
         }
         catch (Exception ex)
         {
@@ -1026,7 +1034,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 }
             }
         }
-        
+
         foreach(Connector connector in diagram.Connectors)
         {
             UpdateConnectorStyle(connector);
@@ -1040,7 +1048,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private async Task ToggleEditortype(string selectedType)
     {
         currentEditorInputType = (EditorInputType)Enum.Parse(typeof(EditorInputType), selectedType.ToLower());
-
+        showSpinner = true;
         // change editor language
         string editorContent = await monacoEditor.GetValue();
         var model = await monacoEditor.GetModel();
@@ -1080,6 +1088,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
         {
             await ParseAndUpdateDiagram();
             isInputValidStatus = true;
+            showSpinner = false;
         }
         else
         {
@@ -1187,10 +1196,12 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task RefreshDiagramLayout()
     {
+        showSpinner = true;
         diagram.BeginUpdate();
         await diagram.RefreshDataSourceAsync();
         await diagram.DoLayoutAsync();
         await diagram.EndUpdateAsync();
+        showSpinner = false;
     }
 
     #endregion
