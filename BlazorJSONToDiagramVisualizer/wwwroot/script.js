@@ -22,7 +22,7 @@ window.getWindowWidth = () => {
 window.getTextSize = (text, font) => {
     const canvas = document.createElement("canvas");
     const context = canvas.getContext("2d");
-    context.font = font || "16px Consolas";
+    context.font = "12px Consolas";
 
     const lines = text.split("\n");
     const lineHeight = 20; // average line height in px
@@ -38,7 +38,8 @@ window.getTextSize = (text, font) => {
     let width = maxWidth;
     let height = lines.length * lineHeight;
 
-    height += 10; // Add 10px vertical padding
+    height += 15; // Add 15px vertical padding
+    width += 15; // Add 15px horziontal padding
 
     return {
         width: width,

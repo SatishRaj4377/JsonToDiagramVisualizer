@@ -640,13 +640,24 @@ IsModal="true" @bind-Visible="isDialogVisible">
             {
                 string displayValue = FormatDisplayValue(rawValue);
                 annotation.Content = displayValue;
-                annotation.Offset = new DiagramPoint
+                if (keyMeasuredWidth > 0)
                 {
-                    X = (padding + 2 + keyMeasuredWidth) / nodeWidth,
-                    Y = offsetY
-                };
-                annotation.HorizontalAlignment = HorizontalAlignment.Left;
-                keyMeasuredWidth = 0;
+                    annotation.Offset = new DiagramPoint
+                    {
+                        X = (keyMeasuredWidth) / nodeWidth,
+                        Y = offsetY
+                    };
+                    annotation.HorizontalAlignment = HorizontalAlignment.Left;
+                    keyMeasuredWidth = 0;
+                }
+                else
+                {
+                    annotation.Offset = new DiagramPoint
+                    {
+                        X = 0.5,
+                        Y = 0.5
+                    };
+                }
                 currentLine++;
             }
 
