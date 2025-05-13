@@ -1050,38 +1050,58 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task ToggleEditortype(string selectedType)
     {
-        currentEditorInputType = (EditorInputType)Enum.Parse(typeof(EditorInputType), selectedType.ToLower());
+        currentEditorInputType =
+            (EditorInputType)Enum.Parse(typeof(EditorInputType), selectedType, ignoreCase: true);
+
         showSpinner = true;
-        // change editor language
+
         string editorContent = await monacoEditor.GetValue();
         var model = await monacoEditor.GetModel();
+
+        string convertedContent = editorContent;
+        try
+        {
+            if (currentEditorInputType == EditorInputType.xml)
+            {
+                // JSON → XML (internally use <root>, but only emit children)
+                var xNode = JsonConvert.DeserializeXNode(editorContent, "root");
+                if (xNode is XDocument xDoc && xDoc.Root != null)
+                {
+                    convertedContent = string.Join("\n\n", xDoc.Root.Elements().Select(el => el.ToString()));
+                }
+            }
+            else // Switching to JSON
+            {
+                // Wrap raw XML in a synthetic root for parsing
+                var wrappedXml = $"<root>{editorContent}</root>";
+                var xmlDoc = XDocument.Parse(wrappedXml);
+                convertedContent = JsonConvert.SerializeXNode(xmlDoc, Formatting.Indented, omitRootObject: true);
+            }
+
+            isInputValidStatus = true;
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Editor type switch conversion failed: {ex.Message}");
+            isInputValidStatus = false;
+        }
+
         await BlazorMonaco.Editor.Global.SetModelLanguage(JS, model, currentEditorInputType.ToString());
+        await monacoEditor.SetValue(convertedContent);
 
         DiagramData? diagramData = null;
+        if (isInputValidStatus)
+        {
+            try
+            {
+                diagramData = currentEditorInputType == EditorInputType.json
+                    ? JsonDiagramParser.ProcessData(convertedContent)
+                    : XmlDiagramParser.ProcessData(convertedContent);
 
-        if (currentEditorInputType == EditorInputType.json)
-        {
-            try
-            {
-                diagramData = JsonDiagramParser.ProcessData(editorContent);
                 isInputValidStatus = true;
+                showSpinner = false;
             }
-            catch (Exception ex)
-            {
-                isInputValidStatus = false;
-            }
-        }
-        else if (currentEditorInputType == EditorInputType.xml)
-        {
-            try
-            {
-                var xmlDoc = new System.Xml.XmlDocument();
-                // Wrapping the content with a root node for validation
-                xmlDoc.LoadXml($"<root>{editorContent}</root>");
-                diagramData = XmlDiagramParser.ProcessData(editorContent);
-                isInputValidStatus = true;
-            }
-            catch (System.Xml.XmlException)
+            catch
             {
                 isInputValidStatus = false;
             }
@@ -1089,13 +1109,9 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
         if (diagramData != null && diagramData.Nodes.Count != 0 && diagramData.Connectors.Count != 0)
         {
+            diagram.BeginUpdate();
             await ParseAndUpdateDiagram();
-            isInputValidStatus = true;
-            showSpinner = false;
-        }
-        else
-        {
-            isInputValidStatus = false;
+            await diagram.EndUpdateAsync();
         }
     }
 
