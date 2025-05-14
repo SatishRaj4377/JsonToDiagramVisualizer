@@ -34,7 +34,7 @@
             <SfSpinner @ref="spinnerObj" Visible="@showSpinner"></SfSpinner>
 
             @* Diagram Control *@
-            <SfDiagramComponent @ref="diagram"
+            <SfDiagramComponent @ref="diagram" EnableChunkMessages="true"
             InteractionController="DiagramInteractions.ZoomPan | DiagramInteractions.SingleSelect"
             Click="OnDiagramClick"
             Width="100%" Height="100%"
