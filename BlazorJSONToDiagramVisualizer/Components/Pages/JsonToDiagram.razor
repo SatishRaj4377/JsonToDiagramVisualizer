@@ -200,7 +200,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private double expandCollapseIconWidth = 36;
     private int nodeCornerRadius = 2;
-    private double minNodeWidth = 120;
+    private double minNodeWidth = 50;
 
     private bool isDialogVisible = false;
     private string selectedNodePath = "";
@@ -459,6 +459,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
     {
         if (obj is Connector connector)
         {
+            connector.Constraints = ConnectorConstraints.Default & ~ConnectorConstraints.Select;
             UpdateConnectorStyle(connector);
         }
     }
@@ -649,10 +650,10 @@ IsModal="true" @bind-Visible="isDialogVisible">
             }
             else if (annotation.ID.StartsWith("Value"))
             {
-                string displayValue = FormatDisplayValue(rawValue);
-                annotation.Content = displayValue;
                 if (keyMeasuredWidth > 0)
                 {
+                    string displayValue = FormatDisplayValue(rawValue);
+                    annotation.Content = displayValue;
                     annotation.Offset = new DiagramPoint
                     {
                         X = (keyMeasuredWidth) / nodeWidth,
@@ -663,11 +664,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 }
                 else
                 {
-                    annotation.Offset = new DiagramPoint
-                    {
-                        X = 0.5,
-                        Y = 0.5
-                    };
+                    annotation.Content = RemoveSurroundingQuotes(annotation.Content?.ToString() ?? "");
+                    annotation.Offset = new DiagramPoint { X = 0.5, Y = 0.5 };
                 }
                 currentLine++;
             }
@@ -712,6 +710,19 @@ IsModal="true" @bind-Visible="isDialogVisible">
         }
 
         return rawValue;
+    }
+
+    public string RemoveSurroundingQuotes(string input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return input;
+
+        if (input.StartsWith("\"") && input.EndsWith("\""))
+        {
+            return input.Substring(1, input.Length - 2);
+        }
+
+        return input;
     }
 
     private void ApplyAnnotationStyle(Annotation annotation, string rawValue)
