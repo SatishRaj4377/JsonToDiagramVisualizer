@@ -1029,13 +1029,14 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private async Task ToggleItemCount()
     {
         showChildCount = !showChildCount;
-        await RefreshDiagramLayout();
+        await diagram.RefreshDataSourceAsync();
+
     }
 
     private async Task ToggleExpandCollapseIcon()
     {
         showExpandCollapseIcon = !showExpandCollapseIcon;
-        await RefreshDiagramLayout();
+        await diagram.RefreshDataSourceAsync();
     }
 
     private async Task ToggleTheme(string theme)
@@ -1052,6 +1053,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
         });
 
         ThemeService.SetTheme(theme, ThemeService.CurrentThemeSettings);
+        StateHasChanged();
     }
 
     private async Task UpdateDiagramElements()
@@ -1167,7 +1169,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 await RotateDiagramLayout();
                 break;
             case "expand-graph":
-                await ToggleGraphCollapse();
+                ToggleGraphCollapse();
                 break;
         }
     }
@@ -1188,7 +1190,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
         }
     }
 
-    private async Task ToggleGraphCollapse()
+    private void ToggleGraphCollapse()
     {
         var nodes = diagram.Nodes;
 
@@ -1236,7 +1238,6 @@ IsModal="true" @bind-Visible="isDialogVisible">
             // After collapsing, reflect the new state
             isGraphCollapsed = true;
         }
-        await RefreshDiagramLayout();
     }
 
     private async Task RotateDiagramLayout()
@@ -1246,18 +1247,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
         layoutOrientation = orientationsList[currentOrientationIndex];
 
-        await RefreshDiagramLayout();
-        diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
-    }
-
-    private async Task RefreshDiagramLayout()
-    {
-        showSpinner = true;
-        diagram.BeginUpdate();
         await diagram.RefreshDataSourceAsync();
-        await diagram.DoLayoutAsync();
-        await diagram.EndUpdateAsync();
-        showSpinner = false;
+        diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
     }
 
     #endregion
