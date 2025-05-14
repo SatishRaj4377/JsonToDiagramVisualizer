@@ -47,12 +47,17 @@ window.getTextSize = (text, font) => {
     };
 };
 
-window.exportJsonFile = (data, filename) => {
+window.exportFile = (data, filename, type) => {
     try {
-        const blob = new Blob([data], { type: "application/json" });
+        let mimeType = "text/plain";
+        if (type === "json") mimeType = "application/json";
+        else if (type === "xml") mimeType = "application/xml";
+        else if (type === "js") mimeType = "application/javascript";
+
+        const blob = new Blob([data], { type: mimeType });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = filename || "data.json";
+        link.download = filename || `data.${type}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -62,7 +67,7 @@ window.exportJsonFile = (data, filename) => {
 };
 
 
-window.importJsonFromFile = (dotNetHelper) => {
+window.importFile = (dotNetHelper, type) => {
     if (!dotNetHelper || !dotNetHelper.invokeMethodAsync) {
         console.warn("DotNet helper is not ready.");
         return;
@@ -70,7 +75,7 @@ window.importJsonFromFile = (dotNetHelper) => {
 
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".json";
+    input.accept = type === "json" ? ".json" : type === "xml" ? ".xml" : ".js";
     input.style.display = "none";
 
     input.onchange = async (e) => {
@@ -82,7 +87,7 @@ window.importJsonFromFile = (dotNetHelper) => {
             const content = reader.result;
 
             try {
-                dotNetHelper.invokeMethodAsync("ReceiveImportedJson", content);
+                dotNetHelper.invokeMethodAsync("ReceiveImportedFile", content);
             } catch (err) {
                 console.error("Interop error: ", err);
             }

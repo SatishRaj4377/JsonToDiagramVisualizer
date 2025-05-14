@@ -958,8 +958,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
     {
         switch (action)
         {
-            case "import-json":
-            case "export-json":
+            case "import":
+            case "export":
                 await HandleImportExport(action);
                 break;
             case "toggle-grid":
@@ -985,34 +985,29 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task HandleImportExport(string action)
     {
-        if (action == "import-json")
+        try
         {
-            try
+            var objRef = DotNetObjectReference.Create(this);
+
+            if (action == "import")
             {
-                var objRef = DotNetObjectReference.Create(this);
-                await JS.InvokeVoidAsync("importJsonFromFile", objRef);
+                await JS.InvokeVoidAsync("importFile", objRef, currentEditorInputType.ToString());
             }
-            catch (JSException ex)
+            else if (action == "export")
             {
-                Console.WriteLine("Import failed: " + ex.Message);
+                string exportData = editorContent ?? string.Empty;
+                string fileName = $"diagram.{currentEditorInputType.ToString()}";
+                await JS.InvokeVoidAsync("exportFile", exportData, fileName, currentEditorInputType.ToString());
             }
         }
-        else if (action == "export-json")
+        catch (JSException ex)
         {
-            try
-            {
-                string exportData = editorContent ?? "{}";
-                await JS.InvokeVoidAsync("exportJsonFile", exportData, "Diagram.json");
-            }
-            catch (JSException ex)
-            {
-                Console.WriteLine("Export failed: " + ex.Message);
-            }
+            Console.WriteLine($"{action} failed: {ex.Message}");
         }
     }
 
     [JSInvokable]
-    public async Task ReceiveImportedJson(string importData)
+    public async Task ReceiveImportedFile(string importData)
     {
         editorContent = importData;
         await monacoEditor.SetValue(importData);
