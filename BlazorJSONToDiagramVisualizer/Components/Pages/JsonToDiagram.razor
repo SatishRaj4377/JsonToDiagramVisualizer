@@ -325,7 +325,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
         }
         else
         {
-            await CheckForErrorsInEditor();
+            isInputValidStatus = await IsEditorContentValidAsync();
 
             diagram.BeginUpdate();
             await ParseAndUpdateDiagram();
@@ -333,23 +333,36 @@ IsModal="true" @bind-Visible="isDialogVisible">
         }
     }
 
-    private async Task CheckForErrorsInEditor()
+    private async Task<bool> IsEditorContentValidAsync()
     {
-        var model = await monacoEditor.GetModel();
+        string editorContent = await monacoEditor.GetValue();
 
-        var markers = await BlazorMonaco.Editor.Global.GetModelMarkers(JS , new()
+        if (string.IsNullOrWhiteSpace(editorContent))
+            return false;
+
+        try
+        {
+            if (currentEditorInputType == EditorInputType.xml)
             {
-                Owner = "",
-                Resource = model.Uri
-            });
+                // Attempt to parse the content as XML
+                XDocument.Parse(editorContent);
+            }
+            else if (currentEditorInputType == EditorInputType.json)
+            {
+                // Attempt to parse the content as JSON
+                JToken.Parse(editorContent);
+            }
+            else
+            {
+                // Unsupported editor type
+                return false;
+            }
 
-        if (markers.Count > 0)
-        {
-            isInputValidStatus = true;
+            return true; // Parsing succeeded
         }
-        else
+        catch
         {
-            isInputValidStatus = false;
+            return false; // Parsing failed
         }
     }
 
@@ -480,18 +493,26 @@ IsModal="true" @bind-Visible="isDialogVisible">
         showSpinner = true;
         try
         {
+            // Retrieve raw editor content
+            var rawContent = await monacoEditor.GetValue();
+            string jsonContent;
+
             if (currentEditorInputType == EditorInputType.xml)
             {
-                editorContent = await monacoEditor.GetValue();
-                diagramData = XmlDiagramParser.ProcessData(editorContent);
+                // Convert XML input to JSON
+                var wrappedXml = $"<root>{rawContent}</root>";
+                var xmlDoc = System.Xml.Linq.XDocument.Parse(wrappedXml);
+                jsonContent = Newtonsoft.Json.JsonConvert.SerializeXNode(xmlDoc, Newtonsoft.Json.Formatting.Indented, omitRootObject: true);
             }
             else
             {
-                editorContent = await monacoEditor.GetValue();
-                diagramData = JsonDiagramParser.ProcessData(editorContent);
+                jsonContent = rawContent;
             }
 
-            if (diagramData != null && diagramData.Nodes.Count == 0 && diagramData.Connectors.Count == 0)
+            // Parse using JSON diagram parser only
+            diagramData = JsonDiagramParser.ProcessData(jsonContent);
+
+            if (diagramData == null || (diagramData.Nodes.Count == 0 && diagramData.Connectors.Count == 0))
             {
                 isInputValidStatus = false;
                 return;
@@ -1070,23 +1091,31 @@ IsModal="true" @bind-Visible="isDialogVisible">
         var model = await monacoEditor.GetModel();
 
         string convertedContent = editorContent;
+        string contentToParse = editorContent; // This will always be JSON for parser
+
         try
         {
             if (currentEditorInputType == EditorInputType.xml)
             {
-                // JSON → XML (internally use <root>, but only emit children)
+                // Convert JSON → XML for display
                 var xNode = JsonConvert.DeserializeXNode(editorContent, "root");
                 if (xNode is XDocument xDoc && xDoc.Root != null)
                 {
                     convertedContent = string.Join("\n\n", xDoc.Root.Elements().Select(el => el.ToString()));
                 }
+
+                // But we still parse using JSON → use original JSON
+                contentToParse = editorContent;
             }
             else // Switching to JSON
             {
-                // Wrap raw XML in a synthetic root for parsing
+                // Convert XML → JSON for display
                 var wrappedXml = $"<root>{editorContent}</root>";
                 var xmlDoc = XDocument.Parse(wrappedXml);
                 convertedContent = JsonConvert.SerializeXNode(xmlDoc, Formatting.Indented, omitRootObject: true);
+
+                // Parsing input will be this new JSON
+                contentToParse = convertedContent;
             }
 
             isInputValidStatus = true;
@@ -1105,9 +1134,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
         {
             try
             {
-                diagramData = currentEditorInputType == EditorInputType.json
-                    ? JsonDiagramParser.ProcessData(convertedContent)
-                    : XmlDiagramParser.ProcessData(convertedContent);
+                // Always parse using JSON parser regardless of editor type
+                diagramData = JsonDiagramParser.ProcessData(contentToParse);
 
                 isInputValidStatus = true;
                 showSpinner = false;
