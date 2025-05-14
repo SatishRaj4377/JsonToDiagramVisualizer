@@ -1076,8 +1076,6 @@ IsModal="true" @bind-Visible="isDialogVisible">
         }
 
         await JS.InvokeVoidAsync("changeDiagramBackground", ThemeService.CurrentThemeSettings.DiagramBackgroundColor);
-
-        await RefreshDiagramLayout();
     }
 
     private async Task ToggleEditortype(string selectedType)

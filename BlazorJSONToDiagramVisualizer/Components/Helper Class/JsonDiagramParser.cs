@@ -74,6 +74,9 @@ public static class JsonDiagramParser
         // 2) Process non-primitive properties
         foreach (var prop in nonPrimitiveProps)
         {
+            if (IsEmpty(prop.Value))
+                continue;
+
             var key = prop.Name;
             var element = prop.Value;
             var nodeId = ConvertUnderScoreToPascalCase(key);
@@ -129,7 +132,11 @@ public static class JsonDiagramParser
     {
         if (element.ValueKind == JsonValueKind.Array)
         {
+            if (IsEmpty(element))
+                return;
+
             int index = 0;
+
             foreach (var item in element.EnumerateArray())
             {
                 if (item.ValueKind == JsonValueKind.Null)
@@ -202,7 +209,7 @@ public static class JsonDiagramParser
                     }
                     // Recurse into nested
                     foreach (var child in obj.EnumerateObject()
-                        .Where(p => p.Value.ValueKind == JsonValueKind.Object || p.Value.ValueKind == JsonValueKind.Array))
+                        .Where(p => (p.Value.ValueKind == JsonValueKind.Object || p.Value.ValueKind == JsonValueKind.Array) && !IsEmpty(p.Value)))
                     {
                         var childId = ConvertUnderScoreToPascalCase($"{nodeId}-{child.Name}");
                         var childPath = $"{parentPath}[{index}].{child.Name}";
@@ -275,6 +282,9 @@ public static class JsonDiagramParser
 
             foreach (var prop in nonPrims2)
             {
+                if (IsEmpty(prop.Value))
+                    continue;
+
                 var key = prop.Name;
                 var childId = ConvertUnderScoreToPascalCase($"{parentId}-{key}");
                 var count = GetObjectLength(prop.Value);
@@ -356,6 +366,12 @@ public static class JsonDiagramParser
         if (double.TryParse(v, out var d))
             return d.ToString();
         return $"\"{v}\"";
+    }
+
+    private static bool IsEmpty(JsonElement element)
+    {
+        return (element.ValueKind == JsonValueKind.Array && element.GetArrayLength() == 0) ||
+               (element.ValueKind == JsonValueKind.Object && !element.EnumerateObject().Any());
     }
 }
 
