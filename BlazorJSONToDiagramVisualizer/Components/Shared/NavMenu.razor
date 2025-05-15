@@ -4,7 +4,7 @@
 @inject ThemeService ThemeService
 
 <div class="navbar-toolbar-container @(ThemeService.CurrentTheme == "dark" ? "navbar-dark" : "navbar-light")" style="padding: 2px 16px; display: flex; align-items: center;">
-    <div class="navbar-title" style="font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 8px; margin-right: 10px;">
+    <div class="navbar-title" style="font-size: 18px; font-weight: bold; display: flex; align-items: center; gap: 8px; margin-right: 5px;">
         <span class="sf-icon-Code"></span>
         <span style="width:260px">{ } @EditorType To Diagram</span>
         <SfToolbar>
@@ -142,7 +142,9 @@
 
     .select-dropdown {
         border: 0 !important;
-        margin-bottom: -3px !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        width: 90px !important;
     }
 
 /*     .e-dropdown-btn, .e-dropdown-btn.e-btn {

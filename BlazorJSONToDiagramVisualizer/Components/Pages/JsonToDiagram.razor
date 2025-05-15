@@ -81,14 +81,14 @@
                     @if (isInputValidStatus)
                 {
                     <span>
-                        <Syncfusion.Blazor.Buttons.SfIcon IconCss="e-icons e-check-3 status-icon" />
+                        <Syncfusion.Blazor.Buttons.SfIcon IconCss="e-icons e-check status-icon" />
                         Valid @(currentEditorInputType.ToString().ToUpper())
                     </span>
                 }
                 else
                 {
                     <span class="invalid-json">
-                        <Syncfusion.Blazor.Buttons.SfIcon IconCss="e-icons e-close-6 status-icon" />
+                        <Syncfusion.Blazor.Buttons.SfIcon IconCss="e-icons e-close status-icon" />
                         Invalid @(currentEditorInputType.ToString().ToUpper())
                     </span>
                 }
@@ -1394,7 +1394,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     /* Bottom Bar */
     .bottom-bar {
-        height: 20px;
+        height: 26px;
         background-color: rgb(236, 236, 236);
         border-top: 1px solid #ccc;
         display: flex;
@@ -1427,7 +1427,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     .status-icon {
         vertical-align: middle;
-        margin-right: -2px;
+        margin-right: -5px;
+        font-size: .95rem;
     }
 
     .invalid-json {
