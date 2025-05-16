@@ -59,7 +59,7 @@
                 NumericColor = "rgb(182, 60, 30)";
                 PopupKeyColor = "#5C940D";
                 PopupValueColor = "#1864AB";
-                PopupContentBGColor = "#F8F9FA";
+                PopupContentBGColor = "#f0f0f0";
             }
             else
             {
@@ -81,7 +81,7 @@
                 NumericColor = "rgb(232, 196, 121)";
                 PopupKeyColor = "#A5D8FF";
                 PopupValueColor = "#40C057";
-                PopupContentBGColor = "#1A1A1A";
+                PopupContentBGColor = "#01000c57;";
             }
         }
     }
