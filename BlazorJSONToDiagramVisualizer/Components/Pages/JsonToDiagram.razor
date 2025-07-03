@@ -35,12 +35,13 @@
 
             @* Diagram Control *@
             <SfDiagramComponent @ref="diagram" EnableChunkMessages="true"
-            InteractionController="DiagramInteractions.ZoomPan | DiagramInteractions.SingleSelect"
-            Click="OnDiagramClick"
-            Width="100%" Height="100%"
-            Created="OnCreated"
-            NodeCreating="OnNodeCreating"
-            ConnectorCreating="OnConnectorCreating">
+                InteractionController="DiagramInteractions.ZoomPan | DiagramInteractions.SingleSelect"
+                Click="OnDiagramClick"
+                Width="100%" Height="100%"
+                Created="OnCreated"
+                NodeCreating="OnNodeCreating"
+                ConnectorCreating="OnConnectorCreating">
+                <ScrollSettings @bind-ScrollLimit="@scrollLimit"></ScrollSettings>
                 <Layout Type="LayoutType.HierarchicalTree"
                 SamePoint="false"
                 @bind-Orientation ="@layoutOrientation"
@@ -183,6 +184,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private EditorInputType currentEditorInputType = EditorInputType.json;
 
     private SfDiagramComponent diagram;
+    private ScrollLimitMode scrollLimit { get; set; } = ScrollLimitMode.Infinity;
     private DiagramObjectCollection<NodeBase> nodeBase = new DiagramObjectCollection<NodeBase>();
     private DiagramData diagramData = new DiagramData();
     private SnapConstraints snapConstraints = SnapConstraints.ShowLines;
