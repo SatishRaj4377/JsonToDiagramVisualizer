@@ -38,7 +38,7 @@ window.getTextSize = (text, font) => {
     let width = maxWidth;
     let height = lines.length * lineHeight;
 
-    height += 15; // Add 15px vertical padding
+    height += 18; // Add 18px vertical padding
     width += 15; // Add 15px horziontal padding
 
     return {
