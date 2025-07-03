@@ -119,3 +119,21 @@ window.setTheme = (themeUrl) => {
 window.changeDiagramBackground = (color) =>{
     document.querySelector('.e-diagram').style.backgroundColor = color;
 }
+window.addSearchKeyboardListener = (dotNetRef) => {
+    // Remove existing listener first
+    window.removeSearchKeyboardListener();
+
+    window.searchKeyHandler = (event) => {
+        if (event.key === 'Enter') {
+            dotNetRef.invokeMethodAsync('HandleSearchKeyPress', event.key);
+        }
+    };
+    document.addEventListener('keydown', window.searchKeyHandler);
+};
+
+window.removeSearchKeyboardListener = () => {
+    if (window.searchKeyHandler) {
+        document.removeEventListener('keydown', window.searchKeyHandler);
+        window.searchKeyHandler = null;
+    }
+};

@@ -212,6 +212,10 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private DiagramToolBar toolBar;
 
+    private List<Node> searchMatches = new List<Node>();
+    private int currentMatchIndex = 0;
+    private string currentSearchQuery = "";
+
     private int nodeCount => diagramData.Nodes.Count;
     private bool isInputValidStatus = true;
     private bool isGraphCollapsed = false;
@@ -1276,37 +1280,87 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task SearchNodes(string searchText)
     {
-        searchText = searchText.Trim().ToLower();
-        var matchingNodes = new List<Node>();
-        if (string.IsNullOrWhiteSpace(searchText))
+        diagram.ResetZoom();
+
+        currentSearchQuery = searchText.Trim().ToLower();
+        searchMatches.Clear();
+        currentMatchIndex = 0;
+
+        // Remove existing keyboard listener
+        await JS.InvokeVoidAsync("removeSearchKeyboardListener");
+
+        // Reset all node styles first
+        await UpdateDefaultNodeStyles();
+
+        if (string.IsNullOrWhiteSpace(currentSearchQuery))
         {
-            await UpdateDefaultNodeStyles();
+            await toolBar.UpdateSearchCounter(0, 0, false);
             return;
         }
 
-        matchingNodes.Clear();
-        diagram.ClearSelection();
-
+        // Find matching nodes
         foreach (var node in diagram.Nodes)
         {
-            string nodeText = node.Data.GetType().GetProperty("actualdata")?.GetValue(node.Data, null)?.ToString()?.ToLower();
-            string contentId = node.ID + "_content";
-
-            await SetNodeStyle(contentId, strokeColor: ThemeService.CurrentThemeSettings.NodeStrokeColor, ThemeService.CurrentThemeSettings.NodeFillColor, strokeWidth: "1.5");
-
-            if (!string.IsNullOrEmpty(nodeText) && nodeText.Contains(searchText))
+            string? nodeText = node.Data?.GetType().GetProperty("actualdata")?.GetValue(node.Data, null)?.ToString()?.ToLower();
+            if (!string.IsNullOrEmpty(nodeText) && nodeText.Contains(currentSearchQuery))
             {
-                matchingNodes.Add(node);
+                searchMatches.Add(node);
             }
         }
 
-        // Highlight matching nodes
-        foreach (var node in matchingNodes)
+        if (searchMatches.Any())
         {
-            string contentId = node.ID + "_content";
-            await SetNodeStyle(contentId, strokeColor: "LightGreen", ThemeService.CurrentThemeSettings.HighlightColor, "2");
-        }
+            await HighlightCurrentMatch();
+            await toolBar.UpdateSearchCounter(currentMatchIndex + 1, searchMatches.Count, !string.IsNullOrWhiteSpace(currentSearchQuery));
 
+            // Add keyboard listener for Enter key navigation
+            await JS.InvokeVoidAsync("addSearchKeyboardListener", DotNetObjectReference.Create(this));
+        }
+        else
+        {
+            await toolBar.UpdateSearchCounter(0, 0, !string.IsNullOrWhiteSpace(currentSearchQuery));
+        }
+    }
+
+    private async Task HighlightCurrentMatch()
+    {
+        for (int i = 0; i < searchMatches.Count; i++)
+        {
+            var node = searchMatches[i];
+            string contentId = node.ID + "_content";
+
+            if (i == currentMatchIndex)
+            {
+                // Highlight current match
+                await SetNodeStyle(contentId,
+                    strokeColor: ThemeService.CurrentThemeSettings.BooleanColor ?? "#32CD32",
+                    fillColor: ThemeService.CurrentThemeSettings.ConnectorStrokeColor ?? "#90EE90",
+                    strokeWidth: "2");
+
+                // Center the current node in view
+                DiagramRect nodeBounds = new DiagramRect((node.OffsetX - (node.Width / 2)), node.OffsetY - (node.Height / 2), node.Width, node.Height);
+                diagram.BringIntoCenter(nodeBounds);
+            }
+            else
+            {
+                // Dim other matches
+                await SetNodeStyle(contentId,
+                    strokeColor: ThemeService.CurrentThemeSettings.BooleanColor ?? "#FFA500",
+                    fillColor: ThemeService.CurrentThemeSettings.ChildCountColor ?? "#FFE4B5",
+                    strokeWidth: "1.5");
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleSearchKeyPress(string key)
+    {
+        if (key == "Enter" && searchMatches.Any())
+        {
+            currentMatchIndex = (currentMatchIndex + 1) % searchMatches.Count;
+            await HighlightCurrentMatch();
+            await toolBar.UpdateSearchCounter(currentMatchIndex + 1, searchMatches.Count, !string.IsNullOrWhiteSpace(currentSearchQuery));
+        }
     }
 
     private async Task SetNodeStyle(string domId, string strokeColor, string fillColor, string strokeWidth)
