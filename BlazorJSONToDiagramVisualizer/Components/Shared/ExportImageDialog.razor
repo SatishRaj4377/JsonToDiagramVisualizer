@@ -4,20 +4,20 @@
 
 <SfDialog @ref="DialogInstance"
 Width="300px"
-Header="Download Image"
+Header="Export Options"
 IsModal="true"
 ShowCloseIcon="true"
 Visible="@IsVisible">
     <DialogEvents OnOverlayModalClick="() => IsVisible = false"></DialogEvents>
-    <div>
+    <div style="margin-top: -13px">
         <p>File Name</p>
         <SfTextBox CssClass="e-outline"
-        @bind-Value="FileName" Placeholder="Enter file name" />
+        @bind-Value="FileName" Placeholder="Enter file name"/>
     </div>
 
     <div style="margin-top: 15px;">
-        <p>Select Export Mode:</p>
-        <div style="padding: 10px 0; display: flex; gap: 10px;">
+        <p>Format</p>
+        <div style="display: flex; gap: 10px;">
             <SfRadioButton Label="PNG"
             Name="exportMode"
             Value="PNG"
@@ -25,9 +25,9 @@ Visible="@IsVisible">
             @bind-Checked="ExportMode">
             </SfRadioButton>
 
-            <SfRadioButton Label="JPEG"
+            <SfRadioButton Label="JPG"
             Name="exportMode"
-            Value="JPEG"
+            Value="JPG"
             TChecked="string"
             @bind-Checked="ExportMode">
             </SfRadioButton>
@@ -41,7 +41,6 @@ Visible="@IsVisible">
         </div>
     </div>
     <DialogButtons>
-        <DialogButton Content="Close" IsPrimary="false" OnClick="@CloseDialog" />
         <DialogButton Content="Export" IsPrimary="true" OnClick="@ExportClicked" />
     </DialogButtons>
 </SfDialog>
@@ -52,7 +51,7 @@ Visible="@IsVisible">
 
     [Parameter] public EventCallback OnExport { get; set; }
 
-    public string FileName { get; set; } = "";
+    public string FileName { get; set; } = "Diagram";
     public string ExportMode { get; set; } = "PNG";
 
     public bool IsVisible { get; set; }
@@ -71,11 +70,6 @@ Visible="@IsVisible">
     private async Task ExportClicked()
     {
         await OnExport.InvokeAsync(null);
-        Hide();
-    }
-
-    private void CloseDialog()
-    {
         Hide();
     }
 }
