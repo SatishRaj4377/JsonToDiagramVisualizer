@@ -478,7 +478,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
     {
         if (obj is Connector connector)
         {
-            connector.Constraints = ConnectorConstraints.Default & ~ConnectorConstraints.Select;
+            connector.Constraints = ConnectorConstraints.Default & ConnectorConstraints.Select;
             UpdateConnectorStyle(connector);
         }
     }
