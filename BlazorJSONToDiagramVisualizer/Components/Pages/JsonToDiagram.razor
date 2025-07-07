@@ -1052,9 +1052,9 @@ IsModal="true" @bind-Visible="isDialogVisible">
         {
             Theme = $"vs-{theme}"
         });
-
         ThemeService.SetTheme(theme, ThemeService.CurrentThemeSettings);
         StateHasChanged();
+        toolBar.ClearSearch();
     }
 
     private async Task UpdateDiagramElements()
@@ -1333,8 +1333,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
             {
                 // Highlight current match
                 await SetNodeStyle(contentId,
-                    strokeColor: ThemeService.CurrentThemeSettings.BooleanColor ?? "#32CD32",
-                    fillColor: ThemeService.CurrentThemeSettings.ConnectorStrokeColor ?? "#90EE90",
+                    strokeColor: ThemeService.CurrentThemeSettings.HighlightStrokeColor ?? "#32CD32",
+                    fillColor: ThemeService.CurrentThemeSettings.HighlightFocusColor ?? "#90EE90",
                     strokeWidth: "2");
 
                 // Center the current node in view
@@ -1345,8 +1345,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
             {
                 // Dim other matches
                 await SetNodeStyle(contentId,
-                    strokeColor: ThemeService.CurrentThemeSettings.BooleanColor ?? "#FFA500",
-                    fillColor: ThemeService.CurrentThemeSettings.ChildCountColor ?? "#FFE4B5",
+                    strokeColor: ThemeService.CurrentThemeSettings.HighlightStrokeColor ?? "#FFA500",
+                    fillColor: ThemeService.CurrentThemeSettings.HighlightFillColor ?? "#FFE4B5",
                     strokeWidth: "1.5");
             }
         }
