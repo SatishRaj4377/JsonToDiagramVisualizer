@@ -60,7 +60,7 @@
                 NumericColor = "rgb(182, 60, 30)";
                 PopupKeyColor = "#5C940D";
                 PopupValueColor = "#1864AB";
-                PopupContentBGColor = "#F8F9FA";
+                PopupContentBGColor = "#f0f0f0";
                 HighlightFillColor = "rgba(27, 255, 0, 0.1)";
                 HighlightFocusColor = "rgba(252, 255, 166, 0.57)";
                 HighlightStrokeColor = "rgb(0, 135, 54)";
@@ -84,7 +84,7 @@
                 NumericColor = "rgb(232, 196, 121)";
                 PopupKeyColor = "#A5D8FF";
                 PopupValueColor = "#40C057";
-                PopupContentBGColor = "#1A1A1A";
+                PopupContentBGColor = "#01000c57";
                 HighlightFillColor = "rgba(27, 255, 0, 0.1)";
                 HighlightFocusColor = "rgba(82, 102, 0, 0.61)";
                 HighlightStrokeColor = "rgb(0, 135, 54)";
