@@ -564,7 +564,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
         var result = await JS.InvokeAsync<Dictionary<string, double>>("getTextSize", content);
 
-        double width = result["width"] + iconExtra;
+        double width = result["width"] + iconExtra + (isLeaf ? 15 : 0); // if leaf node then add extra width
 
         width = Math.Max(minWidth, width);  
 
