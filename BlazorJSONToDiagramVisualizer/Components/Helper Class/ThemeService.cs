@@ -43,7 +43,7 @@
         {
             if (theme == "light")
             {
-                CssUrl = "https://cdn.syncfusion.com/blazor/29.1.33/styles/tailwind.css";
+                CssUrl = "https://cdn.syncfusion.com/blazor/30.1.38/styles/tailwind.css";
                 DiagramBackgroundColor = "#F8F9FA";
                 GridlinesColor = "#EBE8E8";
                 NodeFillColor = "rgb(255, 255, 255)";
@@ -67,7 +67,7 @@
             }
             else
             {
-                CssUrl = "https://cdn.syncfusion.com/blazor/29.1.33/styles/tailwind-dark.css";
+                CssUrl = "https://cdn.syncfusion.com/blazor/30.1.38/styles/tailwind-dark.css";
                 DiagramBackgroundColor = "#1e1e1e";
                 GridlinesColor = "rgb(45, 45, 45)";
                 NodeFillColor = "rgb(41, 41, 41)";
