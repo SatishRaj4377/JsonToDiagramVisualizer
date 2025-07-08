@@ -117,7 +117,7 @@ public static class JsonDiagramParser
             if (childCount > 0)
                 ann.Add(new ShapeAnnotation { Content = $"{{{childCount}}}" });
 
-            var merged = $"{key} {{{childCount}}}";
+            var merged = $"{key}   {{{childCount}}}";
             var node = new Node
             {
                 ID = nodeId,
