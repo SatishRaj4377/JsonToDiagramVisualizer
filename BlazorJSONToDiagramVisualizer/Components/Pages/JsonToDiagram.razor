@@ -564,7 +564,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
         var result = await JS.InvokeAsync<Dictionary<string, double>>("getTextSize", content);
 
-        double width = result["width"] + iconExtra + (isLeaf ? 15 : 0); // if leaf node then add extra width
+        double width = result["width"] + iconExtra;
 
         width = Math.Max(minWidth, width);  
 
@@ -676,6 +676,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 keyMeasuredWidth = contentWidth;
             }
             else if (annotation.ID.StartsWith("Value"))
+            else
             {
                 if (keyMeasuredWidth > 0)
                 {
@@ -754,33 +755,27 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private void ApplyAnnotationStyle(Annotation annotation, string rawValue)
     {
+        string color;
+
         if (annotation.ID.StartsWith("Key"))
         {
-            annotation.Style = new TextStyle
-            {
-                Color = ThemeService.CurrentThemeSettings.TextKeyColor,
-                FontFamily = "Consolas"
-            };
+            color = ThemeService.CurrentThemeSettings.TextKeyColor;
         }
         else if (annotation.ID.StartsWith("Value"))
         {
-            string valueStyle = DetermineValueStyle(rawValue);
-            annotation.Style = new TextStyle
-            {
-                Color = valueStyle,
-                FontFamily = "Consolas"
-            };
+            color = DetermineValueStyle(rawValue);
         }
-        else if (annotation.ID.StartsWith("Count"))
+        else // Handles "Count" and any other cases
         {
-            annotation.Style = new TextStyle
+            color = ThemeService.CurrentThemeSettings.TextValueColor;
+        }
+
+        annotation.Style = new TextStyle
             {
-                Color = ThemeService.CurrentThemeSettings.TextValueColor,
+                Color = color,
                 FontFamily = "Consolas"
             };
-        }
     }
-
     #endregion
 
     #region Popup Dialog

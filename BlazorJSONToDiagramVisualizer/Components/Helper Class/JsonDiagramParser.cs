@@ -16,19 +16,46 @@ public static class JsonDiagramParser
 
         using var doc = JsonDocument.Parse(jsonData);
         var data = doc.RootElement;
+
+        // Handle different root types
+        if (data.ValueKind == JsonValueKind.Array)
+        {
+            // Handle direct array at root
+            ProcessDirectArray(data, diagramData);
+            CheckMultiRoot(diagramData.Nodes, diagramData.Connectors);
+            return diagramData;
+        }
+
         if (data.ValueKind != JsonValueKind.Object || !data.EnumerateObject().Any())
             return diagramData;
 
-        // Determine rootNodeId
+        // Determine rootNodeId and handle preprocessing
         string rootNodeId = "root";
+        JsonElement processedData = data;
+        bool shouldSkipEmptyRoot = false;
+
         var props = data.EnumerateObject().ToList();
-        if (props.Count == 1 && props[0].Value.ValueKind == JsonValueKind.Object)
-            rootNodeId = props[0].Name;
+        if (props.Count == 1)
+        {
+            var singleProp = props[0];
+            if (string.IsNullOrWhiteSpace(singleProp.Name) && singleProp.Value.ValueKind == JsonValueKind.Object)
+            {
+                shouldSkipEmptyRoot = true;
+                processedData = singleProp.Value;
+            }
+            else if (!string.IsNullOrWhiteSpace(singleProp.Name) && singleProp.Value.ValueKind == JsonValueKind.Object)
+            {
+                rootNodeId = singleProp.Name;
+            }
+        }
+
+        // Process the data (either original or preprocessed)
+        var processedProps = processedData.EnumerateObject().ToList();
 
         // Separate primitive and non-primitive properties
         var primitiveProps = new List<JsonProperty>();
         var nonPrimitiveProps = new List<JsonProperty>();
-        foreach (var prop in props)
+        foreach (var prop in processedProps)
         {
             if (prop.Value.ValueKind == JsonValueKind.Object || prop.Value.ValueKind == JsonValueKind.Array)
                 nonPrimitiveProps.Add(prop);
@@ -37,6 +64,8 @@ public static class JsonDiagramParser
         }
 
         bool rootCreated = false;
+        string finalRootId = shouldSkipEmptyRoot ? "data-root" : ConvertUnderScoreToPascalCase(rootNodeId);
+
         // 1) Merge primitive props into the root node
         if (primitiveProps.Any())
         {
@@ -53,10 +82,9 @@ public static class JsonDiagramParser
                 lines.Add($"{key}: {val}");
             }
             var merged = string.Join("\n", lines);
-            var rootIdPascal = ConvertUnderScoreToPascalCase(rootNodeId);
             var rootNode = new Node
             {
-                ID = rootIdPascal,
+                ID = finalRootId,
                 Width = DEFAULT_NODE_WIDTH,
                 Height = DEFAULT_NODE_HEIGHT,
                 Annotations = ann,
@@ -68,7 +96,7 @@ public static class JsonDiagramParser
                 Data = new { path = "Root", title = merged, actualdata = merged }
             };
             diagramData.Nodes.Add(rootNode);
-            rootNodeId = rootIdPascal;
+            rootNodeId = finalRootId;
         }
 
         // 2) Process non-primitive properties
@@ -89,7 +117,7 @@ public static class JsonDiagramParser
             if (childCount > 0)
                 ann.Add(new ShapeAnnotation { Content = $"{{{childCount}}}" });
 
-            var merged = $"{key}  {{{childCount}}}";
+            var merged = $"{key} {{{childCount}}}";
             var node = new Node
             {
                 ID = nodeId,
@@ -118,8 +146,43 @@ public static class JsonDiagramParser
             ProcessNestedData(element, nodeId, diagramData.Nodes, diagramData.Connectors, $"Root.{key}", key);
         }
 
-        CheckMultiRoot(diagramData.Nodes, diagramData.Connectors);
+        // Handle multiple root nodes scenario
+        if ((shouldSkipEmptyRoot || HasMultipleRoots(diagramData.Nodes, diagramData.Connectors)) && !rootCreated)
+        {
+            CheckMultiRoot(diagramData.Nodes, diagramData.Connectors);
+        }
+
         return diagramData;
+    }
+
+    private static void ProcessDirectArray(JsonElement arrayElement, DiagramData diagramData)
+    {
+        if (arrayElement.GetArrayLength() == 0)
+            return;
+
+        // Create a root node for the array
+        string rootNodeId = "array-root";
+        var rootNode = new Node
+        {
+            ID = rootNodeId,
+            Width = DEFAULT_NODE_WIDTH,
+            Height = DEFAULT_NODE_HEIGHT,
+            Annotations = new DiagramObjectCollection<ShapeAnnotation>
+            {
+                new ShapeAnnotation { Content = "Array" },
+                new ShapeAnnotation { Content = $"{{{arrayElement.GetArrayLength()}}}" }
+            },
+            AdditionalInfo = new Dictionary<string, object>
+            {
+                ["isLeaf"] = false,
+                ["mergedContent"] = $"Array {{{arrayElement.GetArrayLength()}}}"
+            },
+            Data = new { path = "Root", title = "Array", actualdata = "Array" }
+        };
+        diagramData.Nodes.Add(rootNode);
+
+        // Process array elements
+        ProcessNestedData(arrayElement, rootNodeId, diagramData.Nodes, diagramData.Connectors, "Root", "Array");
     }
 
     private static void ProcessNestedData(
@@ -146,14 +209,14 @@ public static class JsonDiagramParser
                 }
                 var nodeId = ConvertUnderScoreToPascalCase($"{parentId}-{index}");
 
-                if (item.ValueKind != JsonValueKind.Object)
+                if (item.ValueKind != JsonValueKind.Object && item.ValueKind != JsonValueKind.Array)
                 {
                     // Primitive in array
                     var raw = item.ToString();
                     var val = FormatValue(raw);
                     var ann = new DiagramObjectCollection<ShapeAnnotation>
                     {
-                        new ShapeAnnotation { ID = $"Value_{keyName}", Content = val }
+                        new ShapeAnnotation { Content = val }
                     };
                     nodeList.Add(new Node
                     {
@@ -170,57 +233,145 @@ public static class JsonDiagramParser
                     });
                     connectorList.Add(new Connector { ID = $"connector-{parentId}-{nodeId}", SourceID = parentId, TargetID = nodeId });
                 }
+                else if (item.ValueKind == JsonValueKind.Array)
+                {
+                    // Nested array
+                    var childCount = GetObjectLength(item);
+                    var ann = new DiagramObjectCollection<ShapeAnnotation>
+                    {
+                        new ShapeAnnotation { Content = $"Item {index}" }
+                    };
+                    if (childCount > 0)
+                        ann.Add(new ShapeAnnotation { Content = $"{{{childCount}}}" });
+
+                    var merged = $"Item {index} {{{childCount}}}";
+                    nodeList.Add(new Node
+                    {
+                        ID = nodeId,
+                        Width = DEFAULT_NODE_WIDTH,
+                        Height = DEFAULT_NODE_HEIGHT,
+                        Annotations = ann,
+                        AdditionalInfo = new Dictionary<string, object>
+                        {
+                            ["isLeaf"] = false,
+                            ["mergedContent"] = merged
+                        },
+                        Data = new { path = $"{parentPath}[{index}]", title = $"Item {index}", actualdata = $"Item {index}" }
+                    });
+                    connectorList.Add(new Connector { ID = $"connector-{parentId}-{nodeId}", SourceID = parentId, TargetID = nodeId });
+                    ProcessNestedData(item, nodeId, nodeList, connectorList, $"{parentPath}[{index}]", $"Item {index}");
+                }
                 else
                 {
                     // Object in array
                     var obj = item;
-                    // Merge primitive children
-                    var prims = obj.EnumerateObject()
-                        .Where(p => p.Value.ValueKind != JsonValueKind.Object && p.Value.ValueKind != JsonValueKind.Array)
-                        .ToList();
-                    if (prims.Any())
+                    var objProps = obj.EnumerateObject().ToList();
+
+                    // Separate primitive and non-primitive properties
+                    var prims = objProps.Where(p => p.Value.ValueKind != JsonValueKind.Object && p.Value.ValueKind != JsonValueKind.Array).ToList();
+                    var nonPrims = objProps.Where(p => (p.Value.ValueKind == JsonValueKind.Object || p.Value.ValueKind == JsonValueKind.Array) && !IsEmpty(p.Value)).ToList();
+
+                    bool requiresIntermediateNode = prims.Any() || nonPrims.Count > 1;
+
+                    if (requiresIntermediateNode)
                     {
-                        var ann = new DiagramObjectCollection<ShapeAnnotation>();
-                        var lines = new List<string>();
-                        foreach (var p in prims)
+                        // Create intermediate node for the object
+                        if (prims.Any())
                         {
-                            var k = p.Name;
-                            var raw = p.Value.ToString();
-                            var val = FormatValue(raw);
-                            ann.Add(new ShapeAnnotation { ID = $"Key_{k}", Content = $"{k}:" });
-                            ann.Add(new ShapeAnnotation { ID = $"Value_{k}", Content = val });
-                            lines.Add($"{k}: {val}");
-                        }
-                        var merged = string.Join("\n", lines);
-                        nodeList.Add(new Node
-                        {
-                            ID = nodeId,
-                            Width = DEFAULT_NODE_WIDTH,
-                            Height = DEFAULT_NODE_HEIGHT,
-                            Annotations = ann,
-                            AdditionalInfo = new Dictionary<string, object>
+                            var ann = new DiagramObjectCollection<ShapeAnnotation>();
+                            var lines = new List<string>();
+                            foreach (var p in prims)
                             {
-                                ["isLeaf"] = true,
-                                ["mergedContent"] = merged
-                            },
-                            Data = new { path = $"{parentPath}[{index}]", title = merged, actualdata = merged }
-                        });
+                                var k = p.Name;
+                                var raw = p.Value.ToString();
+                                var val = FormatValue(raw);
+                                ann.Add(new ShapeAnnotation { ID = $"Key_{nodeId}_{k}", Content = $"{k}:" });
+                                ann.Add(new ShapeAnnotation { ID = $"Value_{nodeId}_{k}", Content = val });
+                                lines.Add($"{k}: {val}");
+                            }
+                            var merged = string.Join("\n", lines);
+                            nodeList.Add(new Node
+                            {
+                                ID = nodeId,
+                                Width = DEFAULT_NODE_WIDTH,
+                                Height = DEFAULT_NODE_HEIGHT,
+                                Annotations = ann,
+                                AdditionalInfo = new Dictionary<string, object>
+                                {
+                                    ["isLeaf"] = true,
+                                    ["mergedContent"] = merged
+                                },
+                                Data = new { path = $"{parentPath}[{index}]", title = merged, actualdata = merged }
+                            });
+                        }
+                        else
+                        {
+                            var content = $"Item   {index}";
+                            var ann = new DiagramObjectCollection<ShapeAnnotation>
+                            {
+                                new ShapeAnnotation { Content = content }
+                            };
+                            nodeList.Add(new Node
+                            {
+                                ID = nodeId,
+                                Width = DEFAULT_NODE_WIDTH,
+                                Height = DEFAULT_NODE_HEIGHT,
+                                Annotations = ann,
+                                AdditionalInfo = new Dictionary<string, object>
+                                {
+                                    ["isLeaf"] = false,
+                                    ["mergedContent"] = content
+                                },
+                                Data = new { path = $"{parentPath}[{index}]", title = content, actualdata = content }
+                            });
+                        }
+
                         connectorList.Add(new Connector { ID = $"connector-{parentId}-{nodeId}", SourceID = parentId, TargetID = nodeId });
+
+                        // Process nested properties
+                        foreach (var child in nonPrims)
+                        {
+                            var childId = ConvertUnderScoreToPascalCase($"{nodeId}-{child.Name}");
+                            var childPath = $"{parentPath}[{index}].{child.Name}";
+                            var count = GetObjectLength(child.Value);
+                            var annChild = new DiagramObjectCollection<ShapeAnnotation>
+                            {
+                                new ShapeAnnotation { Content = child.Name }
+                            };
+                            if (count > 0)
+                                annChild.Add(new ShapeAnnotation { Content = $"{{{count}}}" });
+                            var mergedChild = $"{child.Name}   {{{count}}}";
+                            nodeList.Add(new Node
+                            {
+                                ID = childId,
+                                Width = DEFAULT_NODE_WIDTH,
+                                Height = DEFAULT_NODE_HEIGHT,
+                                Annotations = annChild,
+                                AdditionalInfo = new Dictionary<string, object>
+                                {
+                                    ["isLeaf"] = false,
+                                    ["mergedContent"] = mergedChild
+                                },
+                                Data = new { path = childPath, title = child.Name, actualdata = child.Name }
+                            });
+                            connectorList.Add(new Connector { ID = $"connector-{nodeId}-{childId}", SourceID = nodeId, TargetID = childId });
+                            ProcessNestedData(child.Value, childId, nodeList, connectorList, childPath, child.Name);
+                        }
                     }
-                    // Recurse into nested
-                    foreach (var child in obj.EnumerateObject()
-                        .Where(p => (p.Value.ValueKind == JsonValueKind.Object || p.Value.ValueKind == JsonValueKind.Array) && !IsEmpty(p.Value)))
+                    else if (nonPrims.Count == 1)
                     {
-                        var childId = ConvertUnderScoreToPascalCase($"{nodeId}-{child.Name}");
-                        var childPath = $"{parentPath}[{index}].{child.Name}";
-                        var count = GetObjectLength(child.Value);
+                        // Direct connection for single nested object
+                        var singleChild = nonPrims[0];
+                        var childId = ConvertUnderScoreToPascalCase($"{nodeId}-{singleChild.Name}");
+                        var childPath = $"{parentPath}[{index}].{singleChild.Name}";
+                        var count = GetObjectLength(singleChild.Value);
                         var annChild = new DiagramObjectCollection<ShapeAnnotation>
                         {
-                            new ShapeAnnotation { Content = child.Name }
+                            new ShapeAnnotation { Content = singleChild.Name }
                         };
                         if (count > 0)
                             annChild.Add(new ShapeAnnotation { Content = $"{{{count}}}" });
-                        var mergedChild = $"{child.Name}  {{{count}}}";
+                        var mergedChild = $"{singleChild.Name}   {{{count}}}";
                         nodeList.Add(new Node
                         {
                             ID = childId,
@@ -232,10 +383,10 @@ public static class JsonDiagramParser
                                 ["isLeaf"] = false,
                                 ["mergedContent"] = mergedChild
                             },
-                            Data = new { path = childPath, title = child.Name, actualdata = child.Name }
+                            Data = new { path = childPath, title = singleChild.Name, actualdata = singleChild.Name }
                         });
-                        connectorList.Add(new Connector { ID = $"connector-{nodeId}-{childId}", SourceID = nodeId, TargetID = childId });
-                        ProcessNestedData(child.Value, childId, nodeList, connectorList, childPath, child.Name);
+                        connectorList.Add(new Connector { ID = $"connector-{parentId}-{childId}", SourceID = parentId, TargetID = childId });
+                        ProcessNestedData(singleChild.Value, childId, nodeList, connectorList, childPath, singleChild.Name);
                     }
                 }
                 index++;
@@ -247,7 +398,7 @@ public static class JsonDiagramParser
         {
             var props2 = element.EnumerateObject().ToList();
             var prims2 = props2.Where(p => p.Value.ValueKind != JsonValueKind.Object && p.Value.ValueKind != JsonValueKind.Array).ToList();
-            var nonPrims2 = props2.Where(p => p.Value.ValueKind == JsonValueKind.Object || p.Value.ValueKind == JsonValueKind.Array).ToList();
+            var nonPrims2 = props2.Where(p => (p.Value.ValueKind == JsonValueKind.Object || p.Value.ValueKind == JsonValueKind.Array) && !IsEmpty(p.Value)).ToList();
 
             if (prims2.Any())
             {
@@ -282,16 +433,13 @@ public static class JsonDiagramParser
 
             foreach (var prop in nonPrims2)
             {
-                if (IsEmpty(prop.Value))
-                    continue;
-
                 var key = prop.Name;
                 var childId = ConvertUnderScoreToPascalCase($"{parentId}-{key}");
                 var count = GetObjectLength(prop.Value);
                 var ann = new DiagramObjectCollection<ShapeAnnotation> { new ShapeAnnotation { Content = key } };
                 if (count > 0)
                     ann.Add(new ShapeAnnotation { Content = $"{{{count}}}" });
-                var merged = $"{key}  {{{count}}}";
+                var merged = $"{key}   {{{count}}}";
                 nodeList.Add(new Node
                 {
                     ID = childId,
@@ -311,6 +459,14 @@ public static class JsonDiagramParser
         }
     }
 
+    private static bool HasMultipleRoots(List<Node> nodeList, List<Connector> connectorList)
+    {
+        var allIds = nodeList.Select(n => n.ID).ToList();
+        var incoming = new HashSet<string>(connectorList.Select(c => c.TargetID));
+        var roots = allIds.Where(id => !incoming.Contains(id)).ToList();
+        return roots.Count > 1;
+    }
+
     private static void CheckMultiRoot(List<Node> nodeList, List<Connector> connectorList)
     {
         var allIds = nodeList.Select(n => n.ID).ToList();
@@ -325,6 +481,10 @@ public static class JsonDiagramParser
                 Width = 40,
                 Height = 40,
                 Annotations = new DiagramObjectCollection<ShapeAnnotation> { new ShapeAnnotation { Content = "" } },
+                AdditionalInfo = new Dictionary<string, object>
+                {
+                    ["isLeaf"] = false
+                },
                 Data = new { path = "MainRoot", title = "", actualdata = "" }
             });
             foreach (var r in roots)
@@ -353,8 +513,11 @@ public static class JsonDiagramParser
         var sb = new StringBuilder();
         foreach (var part in parts)
         {
-            sb.Append(char.ToUpper(part[0]));
-            sb.Append(part.Substring(1));
+            if (part.Length > 0)
+            {
+                sb.Append(char.ToUpper(part[0]));
+                sb.Append(part.Substring(1));
+            }
         }
         return sb.ToString();
     }
