@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="BlazorMonaco" Version="3.3.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     <PackageReference Include="Syncfusion.Blazor.Diagram" Version="29.1.35" />
     <PackageReference Include="Syncfusion.Blazor.Themes" Version="29.1.35" />
   </ItemGroup>
