@@ -1092,7 +1092,6 @@ IsModal="true" @bind-Visible="isDialogVisible">
         var model = await monacoEditor.GetModel();
 
         string convertedContent = editorContent;
-        string contentToParse = editorContent; // This will always be JSON for parser
 
         try
         {
@@ -1104,9 +1103,6 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 {
                     convertedContent = string.Join("\n\n", xDoc.Root.Elements().Select(el => el.ToString()));
                 }
-
-                // But we still parse using JSON → use original JSON
-                contentToParse = editorContent;
             }
             else // Switching to JSON
             {
@@ -1114,12 +1110,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 var wrappedXml = $"<root>{editorContent}</root>";
                 var xmlDoc = XDocument.Parse(wrappedXml);
                 convertedContent = JsonConvert.SerializeXNode(xmlDoc, Formatting.Indented, omitRootObject: true);
-
-                // Parsing input will be this new JSON
-                contentToParse = convertedContent;
             }
-
-            isInputValidStatus = true;
         }
         catch (Exception ex)
         {
@@ -1129,30 +1120,6 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
         await BlazorMonaco.Editor.Global.SetModelLanguage(JS, model, currentEditorInputType.ToString());
         await monacoEditor.SetValue(convertedContent);
-
-        DiagramData? diagramData = null;
-        if (isInputValidStatus)
-        {
-            try
-            {
-                // Always parse using JSON parser regardless of editor type
-                diagramData = JsonDiagramParser.ProcessData(contentToParse);
-
-                isInputValidStatus = true;
-                showSpinner = false;
-            }
-            catch
-            {
-                isInputValidStatus = false;
-            }
-        }
-
-        if (diagramData != null && diagramData.Nodes.Count != 0 && diagramData.Connectors.Count != 0)
-        {
-            diagram.BeginUpdate();
-            await ParseAndUpdateDiagram();
-            await diagram.EndUpdateAsync();
-        }
     }
 
     #endregion
