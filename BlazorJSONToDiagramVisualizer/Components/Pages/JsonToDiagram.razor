@@ -18,7 +18,7 @@
             <StandaloneCodeEditor @ref="@monacoEditor"
             CssClass="json-editor"
             ConstructionOptions="EditorOptions"
-            OnDidChangeModelContent="OnModelContentChange" />
+            OnDidChangeModelContent="OnEditorContentChange" />
         </div>
 
         @* Splitter *@
@@ -322,7 +322,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
         };
     }
 
-    private async Task OnModelContentChange(ModelContentChangedEvent e)
+    private async Task OnEditorContentChange(ModelContentChangedEvent e)
     {
         editorContent = await monacoEditor.GetValue();
         if (string.IsNullOrEmpty(editorContent.Trim()))
@@ -528,8 +528,6 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
             diagram.Clear();
             nodeBase.Clear();
-            diagram.Nodes.Clear();
-            diagram.Connectors.Clear();
 
             foreach (var node in diagramData.Nodes)
             {
@@ -545,7 +543,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
             diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
             showSpinner = false;
-            toolBar.ClearSearch();
+            await toolBar.ClearSearch();
         }
         catch (Exception ex)
         {
