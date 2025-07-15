@@ -10,7 +10,9 @@ builder.Services.AddRazorComponents()
 builder.Services.AddSyncfusionBlazor();
 builder.Services.AddHttpClient();
 builder.Services.AddSingleton<ThemeService>();
-
+builder.Services.AddSignalR(e => {
+    e.MaximumReceiveMessageSize = 102400000;
+});
 
 var app = builder.Build();
 
