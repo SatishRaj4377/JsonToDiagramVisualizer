@@ -109,16 +109,14 @@ window.setNodeStyle = function (domId, stroke, fill, strokeWidth) {
     }
 };
 
-window.setTheme = (themeUrl) => {
+window.setTheme = (themeUrl, color) => {
     const themeLink = document.getElementById('theme-link');
     if (themeLink) {
         themeLink.href = themeUrl;
     }
+    document.querySelector('.e-diagram').style.backgroundColor = color;
 };
 
-window.changeDiagramBackground = (color) =>{
-    document.querySelector('.e-diagram').style.backgroundColor = color;
-}
 window.addSearchKeyboardListener = (dotNetRef) => {
     // Remove existing listener first
     window.removeSearchKeyboardListener();

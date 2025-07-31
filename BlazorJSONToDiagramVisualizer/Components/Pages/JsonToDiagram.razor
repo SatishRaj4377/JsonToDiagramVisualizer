@@ -1126,8 +1126,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
         ThemeService.CurrentThemeSettings = new ThemeSettings(theme);
 
         UpdateDiagramElements();
-        await JS.InvokeVoidAsync("setTheme", ThemeService.CurrentThemeSettings.CssUrl);
-        await JS.InvokeVoidAsync("changeDiagramBackground", ThemeService.CurrentThemeSettings.DiagramBackgroundColor);
+        await JS.InvokeVoidAsync("setTheme", ThemeService.CurrentThemeSettings.CssUrl, ThemeService.CurrentThemeSettings.DiagramBackgroundColor);
         await monacoEditor.UpdateOptions(new EditorUpdateOptions()
         {
             Theme = $"vs-{theme}"
