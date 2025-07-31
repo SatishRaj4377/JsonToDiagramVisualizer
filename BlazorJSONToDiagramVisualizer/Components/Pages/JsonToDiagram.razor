@@ -38,7 +38,8 @@
                                 InteractionController="DiagramInteractions.ZoomPan | DiagramInteractions.SingleSelect"
                                 Click="OnDiagramClick"
                                 Width="100%" Height="100%"
-                                Created="OnCreated">
+                                Created="OnCreated"
+                                NodeCreating="OnNodeCreating">
                 <ScrollSettings @bind-ScrollLimit="@scrollLimit"></ScrollSettings>
                 <Layout Type="LayoutType.HierarchicalTree"
                 SamePoint="false"
@@ -225,6 +226,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private bool preventRendering = false;
     private bool initializeDiagram = false;
     private bool XmlJSONTypeChange = false;
+    private bool enableNodeCreating = false;
     #endregion
 
     #region Splitter
@@ -400,6 +402,14 @@ IsModal="true" @bind-Visible="isDialogVisible">
         await diagram.EndUpdateAsync();
     }
 
+    private async Task OnNodeCreating(IDiagramObject obj)
+    {
+        if (enableNodeCreating)
+        {
+            await UpdateNodeDefaults(obj);
+        }
+    }
+
     private async Task UpdateNodeDefaults(IDiagramObject obj)
     {
         if (obj is Node node)
@@ -443,6 +453,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
                     node.CollapseIcon = null;
                 }
             }
+            enableNodeCreating = false;
         }
     }
 
@@ -631,23 +642,10 @@ IsModal="true" @bind-Visible="isDialogVisible">
             }
         }
     }
-    private async Task RefreshExpandedIcon()
-    {
-        showSpinner = true;
-        await ParseAndUpdateDiagram();
-        await diagram.DoLayoutAsync();
-        diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
-        showSpinner = false;
-    }
 
     private async Task<(double width, double height)> GetNodeSizeAsync(string content, bool isLeaf, double minWidth)
     {
-        if (!isLeaf && !showChildCount)
-        {
-            content = RemoveCountValue(content);
-        }
-
-        double iconExtra = isLeaf ? 0 : showExpandCollapseIcon ? expandCollapseIconWidth : 0;
+        double iconExtra = isLeaf ? 0 : expandCollapseIconWidth;
 
         var result = await JS.InvokeAsync<Dictionary<string, double>>("getTextSize", content);
 
@@ -1105,16 +1103,30 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private async Task ToggleItemCount()
     {
         showChildCount = !showChildCount;
+        diagram.BeginUpdate();
+
+        // Update annotations without changing node sizes
         foreach (var node in diagram.Nodes!)
         {
-            await UpdateNodeAnnotation(node);
+            if (node.AdditionalInfo != null && node.AdditionalInfo.ContainsKey("isLeaf"))
+            {
+                bool isLeaf = (bool)node.AdditionalInfo["isLeaf"];
+
+                if (!isLeaf && node.ID != "main-root")
+                {
+                    await UpdateNodeAnnotation(node);
+                }
+            }
         }
+
+        await diagram.EndUpdateAsync();
     }
 
     private async Task ToggleExpandCollapseIcon()
     {
         showExpandCollapseIcon = !showExpandCollapseIcon;
-        await RefreshExpandedIcon();
+        enableNodeCreating = true;
+        await diagram.RefreshDataSourceAsync();
     }
 
     private async Task ToggleTheme(string theme)
@@ -1288,13 +1300,9 @@ IsModal="true" @bind-Visible="isDialogVisible">
         currentOrientationIndex = (currentOrientationIndex + 1) % orientationsList.Count();
 
         layoutOrientation = orientationsList[currentOrientationIndex];
-        showSpinner = true;
-        diagram.BeginUpdate();
-        await ParseAndUpdateDiagram();
-        await diagram.DoLayoutAsync();
+        enableNodeCreating = true;
+        await diagram.RefreshDataSourceAsync();
         diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
-        await diagram.EndUpdateAsync();
-        showSpinner = false;
     }
 
     #endregion
@@ -1438,6 +1446,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
     }
 
     .app-layout {
+        margin-top: 4rem;
         display: grid;
         grid-template-rows: auto 1fr auto;
         height: 100vh;
