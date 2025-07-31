@@ -9,11 +9,12 @@ public static class JsonDiagramParser
 {
     private const double DEFAULT_NODE_WIDTH = 150;
     private const double DEFAULT_NODE_HEIGHT = 50;
+    private static int annotationIdCounter = 0;
 
     public static DiagramData ProcessData(string jsonData)
     {
         var diagramData = new DiagramData();
-
+        annotationIdCounter = 0;
         using var doc = JsonDocument.Parse(jsonData);
         var data = doc.RootElement;
 
@@ -77,8 +78,8 @@ public static class JsonDiagramParser
                 var key = p.Name;
                 var raw = p.Value.ToString();
                 var val = FormatValue(raw);
-                ann.Add(new ShapeAnnotation { ID = $"Key_{key}", Content = $"{key}:" });
-                ann.Add(new ShapeAnnotation { ID = $"Value_{key}", Content = val });
+                ann.Add(new ShapeAnnotation { ID = $"Key_{++annotationIdCounter}", Content = $"{key}:" });
+                ann.Add(new ShapeAnnotation { ID = $"Value_{++annotationIdCounter}", Content = val });
                 lines.Add($"{key}: {val}");
             }
             var merged = string.Join("\n", lines);
@@ -112,10 +113,10 @@ public static class JsonDiagramParser
 
             var ann = new DiagramObjectCollection<ShapeAnnotation>
             {
-                new ShapeAnnotation { Content = key }
+                new ShapeAnnotation { ID=$"Parent-{++annotationIdCounter}",Content = key }
             };
             if (childCount > 0)
-                ann.Add(new ShapeAnnotation { Content = $"{{{childCount}}}" });
+                ann.Add(new ShapeAnnotation { ID = $"Count-{++annotationIdCounter}", Content = $"{{{childCount}}}" });
 
             var merged = $"{key}   {{{childCount}}}";
             var node = new Node
@@ -169,8 +170,8 @@ public static class JsonDiagramParser
             Height = DEFAULT_NODE_HEIGHT,
             Annotations = new DiagramObjectCollection<ShapeAnnotation>
             {
-                new ShapeAnnotation { Content = "Array" },
-                new ShapeAnnotation { Content = $"{{{arrayElement.GetArrayLength()}}}" }
+                new ShapeAnnotation { ID=$"{++annotationIdCounter}", Content = "Array" },
+                new ShapeAnnotation { ID=$"{++annotationIdCounter}",Content = $"{{{arrayElement.GetArrayLength()}}}" }
             },
             AdditionalInfo = new Dictionary<string, object>
             {
@@ -216,7 +217,7 @@ public static class JsonDiagramParser
                     var val = FormatValue(raw);
                     var ann = new DiagramObjectCollection<ShapeAnnotation>
                     {
-                        new ShapeAnnotation { Content = val }
+                        new ShapeAnnotation {ID=$"{++annotationIdCounter}", Content = val }
                     };
                     nodeList.Add(new Node
                     {
@@ -239,10 +240,10 @@ public static class JsonDiagramParser
                     var childCount = GetObjectLength(item);
                     var ann = new DiagramObjectCollection<ShapeAnnotation>
                     {
-                        new ShapeAnnotation { Content = $"Item {index}" }
+                        new ShapeAnnotation { ID=$"{++annotationIdCounter}",Content = $"Item {index}" }
                     };
                     if (childCount > 0)
-                        ann.Add(new ShapeAnnotation { Content = $"{{{childCount}}}" });
+                        ann.Add(new ShapeAnnotation { ID = $"{++annotationIdCounter}", Content = $"{{{childCount}}}" });
 
                     var merged = $"Item {index} {{{childCount}}}";
                     nodeList.Add(new Node
@@ -285,8 +286,8 @@ public static class JsonDiagramParser
                                 var k = p.Name;
                                 var raw = p.Value.ToString();
                                 var val = FormatValue(raw);
-                                ann.Add(new ShapeAnnotation { ID = $"Key_{nodeId}_{k}", Content = $"{k}:" });
-                                ann.Add(new ShapeAnnotation { ID = $"Value_{nodeId}_{k}", Content = val });
+                                ann.Add(new ShapeAnnotation { ID = $"Key_{++annotationIdCounter}", Content = $"{k}:" });
+                                ann.Add(new ShapeAnnotation { ID = $"Value_{++annotationIdCounter}", Content = val });
                                 lines.Add($"{k}: {val}");
                             }
                             var merged = string.Join("\n", lines);
@@ -309,7 +310,7 @@ public static class JsonDiagramParser
                             var content = $"Item   {index}";
                             var ann = new DiagramObjectCollection<ShapeAnnotation>
                             {
-                                new ShapeAnnotation { Content = content }
+                                new ShapeAnnotation { ID=$"{++annotationIdCounter}",Content = content }
                             };
                             nodeList.Add(new Node
                             {
@@ -336,10 +337,10 @@ public static class JsonDiagramParser
                             var count = GetObjectLength(child.Value);
                             var annChild = new DiagramObjectCollection<ShapeAnnotation>
                             {
-                                new ShapeAnnotation { Content = child.Name }
+                                new ShapeAnnotation { ID=$"Parent- {++annotationIdCounter}",Content = child.Name }
                             };
                             if (count > 0)
-                                annChild.Add(new ShapeAnnotation { Content = $"{{{count}}}" });
+                                annChild.Add(new ShapeAnnotation { ID = $"Count-{++annotationIdCounter}", Content = $"{{{count}}}" });
                             var mergedChild = $"{child.Name}   {{{count}}}";
                             nodeList.Add(new Node
                             {
@@ -367,10 +368,10 @@ public static class JsonDiagramParser
                         var count = GetObjectLength(singleChild.Value);
                         var annChild = new DiagramObjectCollection<ShapeAnnotation>
                         {
-                            new ShapeAnnotation { Content = singleChild.Name }
+                            new ShapeAnnotation { ID=$"Parent- {++annotationIdCounter}",Content = singleChild.Name }
                         };
                         if (count > 0)
-                            annChild.Add(new ShapeAnnotation { Content = $"{{{count}}}" });
+                            annChild.Add(new ShapeAnnotation { ID = $"Count-{++annotationIdCounter}", Content = $"{{{count}}}" });
                         var mergedChild = $"{singleChild.Name}   {{{count}}}";
                         nodeList.Add(new Node
                         {
@@ -409,8 +410,8 @@ public static class JsonDiagramParser
                     var k = p.Name;
                     var raw = p.Value.ToString();
                     var val = FormatValue(raw);
-                    ann.Add(new ShapeAnnotation { ID = $"Key_{k}", Content = $"{k}:" });
-                    ann.Add(new ShapeAnnotation { ID = $"Value_{k}", Content = val });
+                    ann.Add(new ShapeAnnotation { ID = $"Key_{++annotationIdCounter}", Content = $"{k}:" });
+                    ann.Add(new ShapeAnnotation { ID = $"Value_{++annotationIdCounter}", Content = val });
                     lines.Add($"{k}: {val}");
                 }
                 var merged = string.Join("\n", lines);
@@ -436,9 +437,9 @@ public static class JsonDiagramParser
                 var key = prop.Name;
                 var childId = ConvertUnderScoreToPascalCase($"{parentId}-{key}");
                 var count = GetObjectLength(prop.Value);
-                var ann = new DiagramObjectCollection<ShapeAnnotation> { new ShapeAnnotation { Content = key } };
+                var ann = new DiagramObjectCollection<ShapeAnnotation> { new ShapeAnnotation { ID = $"Parent-{++annotationIdCounter}", Content = key } };
                 if (count > 0)
-                    ann.Add(new ShapeAnnotation { Content = $"{{{count}}}" });
+                    ann.Add(new ShapeAnnotation { ID = $"Count-{++annotationIdCounter}", Content = $"{{{count}}}" });
                 var merged = $"{key}   {{{count}}}";
                 nodeList.Add(new Node
                 {
@@ -480,7 +481,7 @@ public static class JsonDiagramParser
                 ID = mainRootId,
                 Width = 40,
                 Height = 40,
-                Annotations = new DiagramObjectCollection<ShapeAnnotation> { new ShapeAnnotation { Content = "" } },
+                Annotations = new DiagramObjectCollection<ShapeAnnotation> { new ShapeAnnotation { ID = $"{++annotationIdCounter}", Content = "" } },
                 AdditionalInfo = new Dictionary<string, object>
                 {
                     ["isLeaf"] = false

@@ -35,12 +35,10 @@
 
             @* Diagram Control *@
             <SfDiagramComponent @ref="diagram" EnableChunkMessages="true"
-                InteractionController="DiagramInteractions.ZoomPan | DiagramInteractions.SingleSelect"
-                Click="OnDiagramClick"
-                Width="100%" Height="100%"
-                Created="OnCreated"
-                NodeCreating="OnNodeCreating"
-                ConnectorCreating="OnConnectorCreating">
+                                InteractionController="DiagramInteractions.ZoomPan | DiagramInteractions.SingleSelect"
+                                Click="OnDiagramClick"
+                                Width="100%" Height="100%"
+                                Created="OnCreated">
                 <ScrollSettings @bind-ScrollLimit="@scrollLimit"></ScrollSettings>
                 <Layout Type="LayoutType.HierarchicalTree"
                 SamePoint="false"
@@ -223,6 +221,10 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private SfSpinner spinnerObj;
     private bool showSpinner = true;
+    private bool isUpdateDiagram = false;
+    private bool preventRendering = false;
+    private bool initializeDiagram = false;
+    private bool XmlJSONTypeChange = false;
     #endregion
 
     #region Splitter
@@ -334,8 +336,19 @@ IsModal="true" @bind-Visible="isDialogVisible">
             isInputValidStatus = await IsEditorContentValidAsync();
 
             diagram.BeginUpdate();
-            await ParseAndUpdateDiagram();
+            if (!XmlJSONTypeChange) await UpdateAnnotations();
+            if (!isUpdateDiagram && (!preventRendering || initializeDiagram))
+            {
+                await ParseAndUpdateDiagram();
+            }
+
             await diagram.EndUpdateAsync();
+            await diagram.DoLayoutAsync();
+            diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
+            isUpdateDiagram = false;
+            preventRendering = false;
+            XmlJSONTypeChange = false;
+            showSpinner = false;
         }
     }
 
@@ -378,12 +391,16 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task OnCreated()
     {
+        showSpinner = true;
         diagram.BeginUpdate();
         await ParseAndUpdateDiagram();
+        await diagram.DoLayoutAsync();
+        diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
+        showSpinner = false;
         await diagram.EndUpdateAsync();
     }
 
-    private async Task OnNodeCreating(IDiagramObject obj)
+    private async Task UpdateNodeDefaults(IDiagramObject obj)
     {
         if (obj is Node node)
         {
@@ -474,7 +491,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
         }
     }
 
-    private void OnConnectorCreating(IDiagramObject obj)
+    private void UpdateConnectorDefaults(IDiagramObject obj)
     {
         if (obj is Connector connector)
         {
@@ -496,7 +513,6 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task ParseAndUpdateDiagram()
     {
-        showSpinner = true;
         try
         {
             // Retrieve raw editor content
@@ -531,24 +547,104 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
             foreach (var node in diagramData.Nodes)
             {
-                nodeBase.Add(node);
+                UpdateNodeDefaults(node);
+                nodeBase.Add(node!);
             }
-            foreach (var conn in diagramData.Connectors)
+            foreach (var connector in diagramData.Connectors)
             {
-                nodeBase.Add(conn);
+                UpdateConnectorDefaults(connector);
+                nodeBase.Add(connector);
             }
 
             await diagram.AddDiagramElementsAsync(nodeBase);
-            await diagram.DoLayoutAsync();
-
-            diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
-            showSpinner = false;
             await toolBar.ClearSearch();
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error parsing JSON: {ex.Message}");
         }
+    }
+    private async Task UpdateAnnotations()
+    {
+        var rawContent = await monacoEditor.GetValue();
+        string jsonContent;
+
+        if (currentEditorInputType == EditorInputType.xml)
+        {
+            // Convert XML input to JSON
+            var wrappedXml = $"<root>{rawContent}</root>";
+            var xmlDoc = System.Xml.Linq.XDocument.Parse(wrappedXml);
+            jsonContent = Newtonsoft.Json.JsonConvert.SerializeXNode(xmlDoc, Newtonsoft.Json.Formatting.Indented, omitRootObject: true);
+        }
+        else
+        {
+            jsonContent = rawContent;
+        }
+        diagramData = JsonDiagramParser.ProcessData(jsonContent);
+        if (diagramData == null || (diagramData.Nodes.Count == 0 && diagramData.Connectors.Count == 0))
+        {
+            isInputValidStatus = false;
+            return;
+        }
+
+        isInputValidStatus = true;
+        if (diagram.Nodes!.Count == diagramData.Nodes.Count)
+        {
+            foreach (var node in diagramData.Nodes)
+            {
+                var existingNode = diagram.Nodes.FirstOrDefault(n => n.ID == node.ID);
+                var additionalInfo = node?.AdditionalInfo;
+                if (existingNode != null && existingNode.Annotations!.Count == node.Annotations!.Count)
+                {
+                    bool update = false;
+                    preventRendering = true;
+                    foreach (var annotation in node.Annotations)
+                    {
+                        var existingAnnotation = existingNode.Annotations.FirstOrDefault(a => a.ID == annotation.ID);
+                        if (existingAnnotation != null)
+                        {
+                            if (existingAnnotation.Content!.ToString() != annotation.Content!.ToString())
+                            {
+                                existingAnnotation.Content = annotation.Content;
+                                if (additionalInfo != null
+                                    && additionalInfo.TryGetValue("mergedContent", out var mergedContent)
+                                    && additionalInfo.TryGetValue("isLeaf", out var isLeafObj)
+                                    && bool.TryParse(isLeafObj?.ToString(), out bool isLeaf))
+                                {
+                                    var (width, height) = await GetNodeSizeAsync((string)mergedContent, isLeaf, minNodeWidth);
+                                    existingNode.Width = width;
+                                    existingNode.Height = height;
+                                    existingNode.AdditionalInfo = additionalInfo;
+                                }
+                                isUpdateDiagram = true;
+                                update = true;
+                            }
+                        }
+                    }
+                    if (update)
+                    {
+                        await UpdateNodeAnnotation(existingNode);
+                    }
+                }
+                else
+                    initializeDiagram = true;
+            }
+        }
+    }
+    private async Task RefreshDiagramAnnotation()
+    {
+        foreach (var node in diagram.Nodes!)
+        {
+            await UpdateNodeAnnotation(node);
+        }
+    }
+    private async Task RefreshExpandedIcon()
+    {
+        showSpinner = true;
+        await ParseAndUpdateDiagram();
+        await diagram.DoLayoutAsync();
+        diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
+        showSpinner = false;
     }
 
     private async Task<(double width, double height)> GetNodeSizeAsync(string content, bool isLeaf, double minWidth)
@@ -589,22 +685,20 @@ IsModal="true" @bind-Visible="isDialogVisible">
         if (node.Annotations.Count >= 2 && !isLeaf)
         {
             var keyAnnotation = node.Annotations[0];
-            keyAnnotation.ID = "Key";
             keyAnnotation.Style = new TextStyle
-            {
-                Color = ThemeService.CurrentThemeSettings.TextKeyColor,
-                TextAlign = TextAlign.Left,
-                FontFamily = "Consolas"
-            };
+                {
+                    Color = ThemeService.CurrentThemeSettings.TextKeyColor,
+                    TextAlign = TextAlign.Left,
+                    FontFamily = "Consolas"
+                };
 
             var countAnnotation = node.Annotations[1];
-            countAnnotation.ID = "Count";
             countAnnotation.Style = new TextStyle
-            {
-                Color = ThemeService.CurrentThemeSettings.TextValueColor,
-                TextAlign = TextAlign.Right,
-                FontFamily = "Consolas"
-            };
+                {
+                    Color = ThemeService.CurrentThemeSettings.TextValueColor,
+                    TextAlign = TextAlign.Right,
+                    FontFamily = "Consolas"
+                };
 
             if (showChildCount)
             {
@@ -620,26 +714,22 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 countAnnotation.Offset = new DiagramPoint { X = 1, Y = 0.5 };
                 countAnnotation.HorizontalAlignment = HorizontalAlignment.Right;
                 countAnnotation.Margin = new DiagramThickness
-                {
-                    Right = (showExpandCollapseIcon ? expandCollapseIconWidth : 0) + padding
-                };
+                    {
+                        Right = (showExpandCollapseIcon ? expandCollapseIconWidth : 0) + padding
+                    };
             }
             else
             {
-                if (showExpandCollapseIcon)
-                {
-                    keyAnnotation.Offset = new DiagramPoint { X = 0, Y = 0.5 };
-                    keyAnnotation.HorizontalAlignment = HorizontalAlignment.Auto;
-                    keyAnnotation.Margin = new DiagramThickness { Left = padding };
-                }
-                else
-                {
-                    keyAnnotation.Offset = new DiagramPoint { X = 0.5, Y = 0.5 };
-                    keyAnnotation.HorizontalAlignment = HorizontalAlignment.Center;
-                    keyAnnotation.Margin = new DiagramThickness();
-                }
                 // Hide Count Annotation
                 countAnnotation.Visibility = false;
+
+                // Center the Key annotation when showChildCount is false
+                keyAnnotation.Offset = new DiagramPoint { X = 0.5, Y = 0.5 };
+                keyAnnotation.HorizontalAlignment = HorizontalAlignment.Center;
+                keyAnnotation.Margin = new DiagramThickness();
+
+                // Update TextAlign to Center for better visual alignment
+                keyAnnotation.Style.TextAlign = TextAlign.Center;
             }
         }
         else if (isLeaf)
@@ -655,7 +745,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
         double totalLines = node?.Annotations?.Count(x => x.ID.StartsWith("Key")) ?? 1;
         var spacingY = totalLines > 0 ? 1.0 / (totalLines + 1) : 0.5;
         var currentLine = 1;
-        foreach (var annotation in node.Annotations)
+        foreach (var annotation in node!.Annotations!)
         {
             var size = await JS.InvokeAsync<Dictionary<string, double>>("getTextSize", annotation.Content, "12px Consolas");
             double contentWidth = size["width"];
@@ -754,7 +844,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
     {
         string color;
 
-        if (annotation.ID.StartsWith("Key"))
+        if (annotation.ID.StartsWith("Key") || annotation.ID.StartsWith("Parent"))
         {
             color = ThemeService.CurrentThemeSettings.TextKeyColor;
         }
@@ -818,7 +908,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
             __builder.CloseElement();
         }
         // If a json data
-        else if(formattedLines.Count > 0)
+        else if (formattedLines.Count > 0)
         {
             __builder.OpenElement(seq++, "div");
             __builder.AddContent(seq++, "{");
@@ -1022,38 +1112,34 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private async Task ToggleItemCount()
     {
         showChildCount = !showChildCount;
-        await diagram.RefreshDataSourceAsync();
-
+        await RefreshDiagramAnnotation();
     }
 
     private async Task ToggleExpandCollapseIcon()
     {
         showExpandCollapseIcon = !showExpandCollapseIcon;
-        await diagram.RefreshDataSourceAsync();
+        await RefreshExpandedIcon();
     }
 
     private async Task ToggleTheme(string theme)
     {
         ThemeService.CurrentThemeSettings = new ThemeSettings(theme);
 
+        UpdateDiagramElements();
         await JS.InvokeVoidAsync("setTheme", ThemeService.CurrentThemeSettings.CssUrl);
-
-        await UpdateDiagramElements();
-
+        await JS.InvokeVoidAsync("changeDiagramBackground", ThemeService.CurrentThemeSettings.DiagramBackgroundColor);
         await monacoEditor.UpdateOptions(new EditorUpdateOptions()
         {
             Theme = $"vs-{theme}"
         });
         ThemeService.SetTheme(theme, ThemeService.CurrentThemeSettings);
         StateHasChanged();
-        toolBar.ClearSearch();
+        await toolBar.ClearSearch();
     }
 
-    private async Task UpdateDiagramElements()
+    private void UpdateDiagramElements()
     {
-        await UpdateDefaultNodeStyles();
-
-        foreach(Node node in diagram.Nodes)
+        foreach (Node node in diagram.Nodes!)
         {
             if (node.Annotations != null || node.Annotations?.Count > 0)
             {
@@ -1063,18 +1149,19 @@ IsModal="true" @bind-Visible="isDialogVisible">
                     ApplyAnnotationStyle(annotation, rawValue);
                 }
             }
+            node.Style!.StrokeColor = ThemeService.CurrentThemeSettings.NodeStrokeColor;
+            node.Style.Fill = ThemeService.CurrentThemeSettings.NodeFillColor;
+            node.Style.StrokeWidth = 1.5;
         }
 
-        foreach(Connector connector in diagram.Connectors)
+        foreach (Connector connector in diagram.Connectors!)
         {
-            UpdateConnectorStyle(connector);
+            connector.Style!.StrokeColor = ThemeService.CurrentThemeSettings.ConnectorStrokeColor;
         }
-
-        await JS.InvokeVoidAsync("changeDiagramBackground", ThemeService.CurrentThemeSettings.DiagramBackgroundColor);
     }
-
     private async Task ToggleEditortype(string selectedType)
     {
+        isUpdateDiagram = false; preventRendering = false;
         currentEditorInputType =
             (EditorInputType)Enum.Parse(typeof(EditorInputType), selectedType, ignoreCase: true);
 
@@ -1109,7 +1196,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
             Console.Error.WriteLine($"Editor type switch conversion failed: {ex.Message}");
             isInputValidStatus = false;
         }
-
+        XmlJSONTypeChange = true;
         await BlazorMonaco.Editor.Global.SetModelLanguage(JS, model, currentEditorInputType.ToString());
         await monacoEditor.SetValue(convertedContent);
     }
@@ -1157,7 +1244,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
         if (isGraphCollapsed)
         {
             // Expand all nodes
-            foreach (var node in nodes)
+            foreach (var node in nodes!)
             {
                 // Check if a node is already expanded
                 if (!node.IsExpanded)
@@ -1171,18 +1258,18 @@ IsModal="true" @bind-Visible="isDialogVisible">
         else
         {
             // Collapse only the root nodes
-            var rootNodes = nodes.Where(node => node.InEdges.Count == 0).ToList();
+            var rootNodes = nodes!.Where(node => node.InEdges!.Count == 0).ToList();
             foreach (var node in rootNodes)
             {
                 // Check if node doesn't have an expand icon or its shape is 'None'
                 if (node.ExpandIcon == null || node.ExpandIcon.Shape == DiagramExpandIcons.None)
                 {
-                    foreach (var edgeId in node.OutEdges)
+                    foreach (var edgeId in node.OutEdges!)
                     {
-                        var connector = diagram.Connectors.FirstOrDefault(c => c.ID == edgeId);
+                        var connector = diagram.Connectors!.FirstOrDefault(c => c.ID == edgeId);
                         if (connector != null)
                         {
-                            var targetNode = nodes.FirstOrDefault(n => n.ID == connector.TargetID);
+                            var targetNode = nodes!.FirstOrDefault(n => n.ID == connector.TargetID);
                             if (targetNode != null)
                             {
                                 targetNode.IsExpanded = false;
@@ -1206,9 +1293,13 @@ IsModal="true" @bind-Visible="isDialogVisible">
         currentOrientationIndex = (currentOrientationIndex + 1) % orientationsList.Count();
 
         layoutOrientation = orientationsList[currentOrientationIndex];
-
-        await diagram.RefreshDataSourceAsync();
+        showSpinner = true;
+        diagram.BeginUpdate();
+        await ParseAndUpdateDiagram();
+        await diagram.DoLayoutAsync();
         diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
+        await diagram.EndUpdateAsync();
+        showSpinner = false;
     }
 
     #endregion
@@ -1258,7 +1349,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
         }
 
         // Find matching nodes
-        foreach (var node in diagram.Nodes)
+        foreach (var node in diagram.Nodes!)
         {
             string? nodeText = node.Data?.GetType().GetProperty("actualdata")?.GetValue(node.Data, null)?.ToString()?.ToLower();
             if (!string.IsNullOrEmpty(nodeText) && nodeText.Contains(currentSearchQuery))
@@ -1332,7 +1423,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task UpdateDefaultNodeStyles()
     {
-        foreach (var node in diagram.Nodes)
+        foreach (var node in diagram.Nodes!)
         {
             string contentId = node.ID + "_content";
             await SetNodeStyle(contentId, strokeColor: ThemeService.CurrentThemeSettings.NodeStrokeColor, ThemeService.CurrentThemeSettings.NodeFillColor, strokeWidth: "1.5");
