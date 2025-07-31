@@ -547,7 +547,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
             foreach (var node in diagramData.Nodes)
             {
-                UpdateNodeDefaults(node);
+                await UpdateNodeDefaults(node);
                 nodeBase.Add(node!);
             }
             foreach (var connector in diagramData.Connectors)
@@ -629,13 +629,6 @@ IsModal="true" @bind-Visible="isDialogVisible">
                 else
                     initializeDiagram = true;
             }
-        }
-    }
-    private async Task RefreshDiagramAnnotation()
-    {
-        foreach (var node in diagram.Nodes!)
-        {
-            await UpdateNodeAnnotation(node);
         }
     }
     private async Task RefreshExpandedIcon()
@@ -1112,7 +1105,10 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private async Task ToggleItemCount()
     {
         showChildCount = !showChildCount;
-        await RefreshDiagramAnnotation();
+        foreach (var node in diagram.Nodes!)
+        {
+            await UpdateNodeAnnotation(node);
+        }
     }
 
     private async Task ToggleExpandCollapseIcon()
