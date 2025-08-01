@@ -605,6 +605,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
             {
                 var existingNode = diagram.Nodes.FirstOrDefault(n => n.ID == node.ID);
                 var additionalInfo = node?.AdditionalInfo;
+                var nodeData = node?.Data;
                 if (existingNode != null && existingNode.Annotations!.Count == node.Annotations!.Count)
                 {
                     bool update = false;
@@ -626,6 +627,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
                                     existingNode.Width = width;
                                     existingNode.Height = height;
                                     existingNode.AdditionalInfo = additionalInfo;
+                                    existingNode.Data = nodeData;
                                 }
                                 isUpdateDiagram = true;
                                 update = true;
