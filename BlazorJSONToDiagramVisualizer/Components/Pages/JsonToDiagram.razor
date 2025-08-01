@@ -226,6 +226,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private bool preventRendering = false;
     private bool initializeDiagram = false;
     private bool XmlJSONTypeChange = false;
+    private bool isJsonImporting = false;
     private bool enableNodeCreating = false;
     #endregion
 
@@ -337,19 +338,30 @@ IsModal="true" @bind-Visible="isDialogVisible">
         {
             isInputValidStatus = await IsEditorContentValidAsync();
 
-            diagram.BeginUpdate();
-            if (!XmlJSONTypeChange) await UpdateAnnotations();
+            if (!XmlJSONTypeChange && !isJsonImporting)
+            {
+                await UpdateAnnotations();
+            }
             if (!isUpdateDiagram && (!preventRendering || initializeDiagram))
             {
+                diagram.BeginUpdate();
                 await ParseAndUpdateDiagram();
+                if (XmlJSONTypeChange || isJsonImporting)
+                {
+                    await diagram.EndUpdateAsync();
+                    await diagram.DoLayoutAsync();
+                }
+                else
+                {
+                    await diagram.DoLayoutAsync();
+                }
             }
 
-            await diagram.EndUpdateAsync();
-            await diagram.DoLayoutAsync();
             diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
             isUpdateDiagram = false;
             preventRendering = false;
             XmlJSONTypeChange = false;
+            isJsonImporting = false;
             showSpinner = false;
         }
     }
@@ -1090,6 +1102,9 @@ IsModal="true" @bind-Visible="isDialogVisible">
     [JSInvokable]
     public async Task ReceiveImportedFile(string importData)
     {
+        // updating flags
+        isJsonImporting = true;
+
         editorContent = importData;
         await monacoEditor.SetValue(importData);
     }
