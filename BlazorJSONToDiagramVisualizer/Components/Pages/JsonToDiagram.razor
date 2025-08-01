@@ -340,7 +340,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
             if (!XmlJSONTypeChange && !isJsonImporting)
             {
-                await UpdateAnnotations();
+                await UpdateAnnotationsText();
             }
             if (!isUpdateDiagram && (!preventRendering || initializeDiagram))
             {
@@ -452,7 +452,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
                     node.Height = height;
                 }
 
-                await UpdateNodeAnnotation(node);
+                await PositionNodeAnnotations(node);
 
                 if (additionalInfo != null && !(bool)additionalInfo["isLeaf"] & showExpandCollapseIcon)
                 {
@@ -587,73 +587,83 @@ IsModal="true" @bind-Visible="isDialogVisible">
             Console.WriteLine($"Error parsing JSON: {ex.Message}");
         }
     }
-    private async Task UpdateAnnotations()
+    private async Task UpdateAnnotationsText()
     {
-        var rawContent = await monacoEditor.GetValue();
-        string jsonContent;
+        try
+        {
+            var rawContent = await monacoEditor.GetValue();
+            string jsonContent;
 
-        if (currentEditorInputType == EditorInputType.xml)
-        {
-            // Convert XML input to JSON
-            var wrappedXml = $"<root>{rawContent}</root>";
-            var xmlDoc = System.Xml.Linq.XDocument.Parse(wrappedXml);
-            jsonContent = Newtonsoft.Json.JsonConvert.SerializeXNode(xmlDoc, Newtonsoft.Json.Formatting.Indented, omitRootObject: true);
-        }
-        else
-        {
-            jsonContent = rawContent;
-        }
-        diagramData = JsonDiagramParser.ProcessData(jsonContent);
-        if (diagramData == null || (diagramData.Nodes.Count == 0 && diagramData.Connectors.Count == 0))
-        {
-            isInputValidStatus = false;
-            return;
-        }
-
-        isInputValidStatus = true;
-        if (diagram.Nodes!.Count == diagramData.Nodes.Count)
-        {
-            foreach (var node in diagramData.Nodes)
+            if (currentEditorInputType == EditorInputType.xml)
             {
-                var existingNode = diagram.Nodes.FirstOrDefault(n => n.ID == node.ID);
-                var additionalInfo = node?.AdditionalInfo;
-                var nodeData = node?.Data;
-                if (existingNode != null && existingNode.Annotations!.Count == node.Annotations!.Count)
+                // Convert XML input to JSON
+                var wrappedXml = $"<root>{rawContent}</root>";
+                var xmlDoc = System.Xml.Linq.XDocument.Parse(wrappedXml);
+                jsonContent = Newtonsoft.Json.JsonConvert.SerializeXNode(xmlDoc, Newtonsoft.Json.Formatting.Indented, omitRootObject: true);
+            }
+            else
+            {
+                jsonContent = rawContent;
+            }
+
+            diagramData = JsonDiagramParser.ProcessData(jsonContent);
+
+            if (diagramData == null || (diagramData.Nodes.Count == 0 && diagramData.Connectors.Count == 0))
+            {
+                isInputValidStatus = false;
+                return;
+            }
+
+            isInputValidStatus = true;
+
+            if (diagram.Nodes!.Count == diagramData.Nodes.Count)
+            {
+                foreach (var node in diagramData.Nodes)
                 {
-                    bool update = false;
-                    preventRendering = true;
-                    foreach (var annotation in node.Annotations)
+                    var existingNode = diagram.Nodes.FirstOrDefault(n => n.ID == node.ID);
+                    var additionalInfo = node?.AdditionalInfo;
+                    var nodeData = node?.Data;
+                    if (existingNode != null && existingNode.Annotations!.Count == node.Annotations!.Count)
                     {
-                        var existingAnnotation = existingNode.Annotations.FirstOrDefault(a => a.ID == annotation.ID);
-                        if (existingAnnotation != null)
+                        bool update = false;
+                        preventRendering = true;
+                        foreach (var annotation in node.Annotations)
                         {
-                            if (existingAnnotation.Content!.ToString() != annotation.Content!.ToString())
+                            var existingAnnotation = existingNode.Annotations.FirstOrDefault(a => a.ID == annotation.ID);
+                            if (existingAnnotation != null)
                             {
-                                existingAnnotation.Content = annotation.Content;
-                                if (additionalInfo != null
-                                    && additionalInfo.TryGetValue("mergedContent", out var mergedContent)
-                                    && additionalInfo.TryGetValue("isLeaf", out var isLeafObj)
-                                    && bool.TryParse(isLeafObj?.ToString(), out bool isLeaf))
+                                if (existingAnnotation.Content!.ToString() != annotation.Content!.ToString())
                                 {
-                                    var (width, height) = await GetNodeSizeAsync((string)mergedContent, isLeaf, minNodeWidth);
-                                    existingNode.Width = width;
-                                    existingNode.Height = height;
-                                    existingNode.AdditionalInfo = additionalInfo;
-                                    existingNode.Data = nodeData;
+                                    existingAnnotation.Content = annotation.Content;
+                                    if (additionalInfo != null
+                                        && additionalInfo.TryGetValue("mergedContent", out var mergedContent)
+                                        && additionalInfo.TryGetValue("isLeaf", out var isLeafObj)
+                                        && bool.TryParse(isLeafObj?.ToString(), out bool isLeaf))
+                                    {
+                                        var (width, height) = await GetNodeSizeAsync((string)mergedContent, isLeaf, minNodeWidth);
+                                        existingNode.Width = width;
+                                        existingNode.Height = height;
+                                        existingNode.AdditionalInfo = additionalInfo;
+                                        existingNode.Data = nodeData;
+                                    }
+                                    isUpdateDiagram = true;
+                                    update = true;
                                 }
-                                isUpdateDiagram = true;
-                                update = true;
                             }
                         }
+                        if (update)
+                        {
+                            await PositionNodeAnnotations(existingNode);
+                        }
                     }
-                    if (update)
-                    {
-                        await UpdateNodeAnnotation(existingNode);
-                    }
+                    else
+                        initializeDiagram = true;
                 }
-                else
-                    initializeDiagram = true;
             }
+        }
+        catch
+        {
+            isInputValidStatus = false;
         }
     }
 
@@ -678,7 +688,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
         return System.Text.RegularExpressions.Regex.Replace(input, pattern, "").Trim();
     }
 
-    private async Task UpdateNodeAnnotation(Node node, bool isThemeChange = false)
+    private async Task PositionNodeAnnotations(Node node, bool isThemeChange = false)
     {
         int padding = 10;
 
@@ -1131,7 +1141,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
                 if (!isLeaf && node.ID != "main-root")
                 {
-                    await UpdateNodeAnnotation(node);
+                    await PositionNodeAnnotations(node);
                 }
             }
         }
@@ -1463,7 +1473,6 @@ IsModal="true" @bind-Visible="isDialogVisible">
     }
 
     .app-layout {
-        margin-top: 4rem;
         display: grid;
         grid-template-rows: auto 1fr auto;
         height: 100vh;
