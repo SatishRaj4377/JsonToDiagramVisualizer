@@ -35,11 +35,11 @@
 
             @* Diagram Control *@
             <SfDiagramComponent @ref="diagram" EnableChunkMessages="true"
-                                InteractionController="DiagramInteractions.ZoomPan | DiagramInteractions.SingleSelect"
-                                Click="OnDiagramClick"
-                                Width="100%" Height="100%"
-                                Created="OnCreated"
-                                NodeCreating="OnNodeCreating">
+            InteractionController="DiagramInteractions.ZoomPan | DiagramInteractions.SingleSelect"
+            Click="OnDiagramClick"
+            Width="100%" Height="100%"
+            Created="OnCreated"
+            NodeCreating="OnNodeCreating">
                 <ScrollSettings @bind-ScrollLimit="@scrollLimit"></ScrollSettings>
                 <Layout Type="LayoutType.HierarchicalTree"
                 SamePoint="false"
@@ -329,40 +329,40 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task OnEditorContentChange(ModelContentChangedEvent e)
     {
-        editorContent = await monacoEditor.GetValue();
-        if (string.IsNullOrEmpty(editorContent.Trim()))
+        try
         {
-            isInputValidStatus = true;
-        }
-        else
-        {
-            isInputValidStatus = await IsEditorContentValidAsync();
-
-            if (!XmlJSONTypeChange && !isJsonImporting)
+            editorContent = await monacoEditor.GetValue();
+            if (string.IsNullOrEmpty(editorContent.Trim()))
             {
-                await UpdateAnnotationsText();
+                isInputValidStatus = true;
             }
-            if (!isUpdateDiagram && (!preventRendering || initializeDiagram))
+            else
             {
-                diagram.BeginUpdate();
-                await ParseAndUpdateDiagram();
-                if (XmlJSONTypeChange || isJsonImporting)
+                isInputValidStatus = await IsEditorContentValidAsync();
+
+                if (!XmlJSONTypeChange && !isJsonImporting)
                 {
+                    await UpdateAnnotationsText();
+                }
+                if (!isUpdateDiagram && (!preventRendering || initializeDiagram))
+                {
+                    diagram.BeginUpdate();
+                    await ParseAndUpdateDiagram();
                     await diagram.EndUpdateAsync();
-                    await diagram.DoLayoutAsync();
                 }
-                else
-                {
-                    await diagram.DoLayoutAsync();
-                }
+                await diagram.DoLayoutAsync();
+                diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
+                isUpdateDiagram = false;
+                preventRendering = false;
+                XmlJSONTypeChange = false;
+                isJsonImporting = false;
+                showSpinner = false;
+                await toolBar.ClearSearch();
             }
-
-            diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
-            isUpdateDiagram = false;
-            preventRendering = false;
-            XmlJSONTypeChange = false;
-            isJsonImporting = false;
-            showSpinner = false;
+        }
+        catch
+        {
+            showSpinner = true;   
         }
     }
 
@@ -405,12 +405,10 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task OnCreated()
     {
-        showSpinner = true;
         diagram.BeginUpdate();
         await ParseAndUpdateDiagram();
         await diagram.DoLayoutAsync();
         diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
-        showSpinner = false;
         await diagram.EndUpdateAsync();
     }
 
@@ -536,6 +534,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task ParseAndUpdateDiagram()
     {
+        showSpinner = true;
         try
         {
             // Retrieve raw editor content
@@ -580,11 +579,12 @@ IsModal="true" @bind-Visible="isDialogVisible">
             }
 
             await diagram.AddDiagramElementsAsync(nodeBase);
-            await toolBar.ClearSearch();
+            showSpinner = false;
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error parsing JSON: {ex.Message}");
+            showSpinner = true;
         }
     }
     private async Task UpdateAnnotationsText()
@@ -1202,7 +1202,6 @@ IsModal="true" @bind-Visible="isDialogVisible">
         currentEditorInputType =
             (EditorInputType)Enum.Parse(typeof(EditorInputType), selectedType, ignoreCase: true);
 
-        showSpinner = true;
 
         string editorContent = await monacoEditor.GetValue();
         var model = await monacoEditor.GetModel();
