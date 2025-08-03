@@ -1214,6 +1214,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task ToggleTheme(string theme)
     {
+        if (ThemeService.CurrentTheme == theme) return;
+
         ThemeService.CurrentThemeSettings = new ThemeSettings(theme);
 
         UpdateDiagramElements();
