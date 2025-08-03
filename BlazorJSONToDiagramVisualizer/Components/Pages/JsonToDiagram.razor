@@ -228,6 +228,9 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private bool XmlJSONTypeChange = false;
     private bool isJsonImporting = false;
     private bool enableNodeCreating = false;
+
+    private Timer? debounceTimer;
+    private readonly int debounceDelayMs = 200;
     #endregion
 
     #region Splitter
@@ -329,43 +332,70 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task OnEditorContentChange(ModelContentChangedEvent e)
     {
+        // Cancel the previous timer if it exists
+        debounceTimer?.Dispose();
+
+        // Start a new timer
+        debounceTimer = new Timer(async _ => 
+        {
+            await InvokeAsync(async () =>
+            {
+                editorContent = await monacoEditor.GetValue();
+                if (string.IsNullOrEmpty(editorContent.Trim()))
+                {
+                    isInputValidStatus = true;
+                }
+                else
+                {
+                    isInputValidStatus = await IsEditorContentValidAsync();
+                    if (isInputValidStatus)
+                    {
+                        await ProcessEditorContentChange();
+                    }
+                    else
+                    {
+                        showSpinner = true;
+                    }
+                    StateHasChanged();
+                }
+            });
+        }, null, debounceDelayMs, Timeout.Infinite);
+    }
+
+    private async Task ProcessEditorContentChange()
+    {
         try
         {
-            editorContent = await monacoEditor.GetValue();
-            if (string.IsNullOrEmpty(editorContent.Trim()))
+            diagram.BeginUpdate();
+            if (!XmlJSONTypeChange && !isJsonImporting)
             {
-                isInputValidStatus = true;
+                await UpdateAnnotationsText();
+                await diagram.EndUpdateAsync();
             }
-            else
+            if (!isUpdateDiagram && (!preventRendering || initializeDiagram))
             {
-                isInputValidStatus = await IsEditorContentValidAsync();
-
-                if (!XmlJSONTypeChange && !isJsonImporting)
-                {
-                    diagram.BeginUpdate();
-                    await UpdateAnnotationsText();
-                    await diagram.EndUpdateAsync();
-                }
-                if (!isUpdateDiagram && (!preventRendering || initializeDiagram))
-                {
-                    diagram.BeginUpdate();
-                    await ParseAndUpdateDiagram();
-                    await diagram.EndUpdateAsync();
-                }
-                await diagram.DoLayoutAsync();
-                diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
-                isUpdateDiagram = false;
-                preventRendering = false;
-                XmlJSONTypeChange = false;
-                isJsonImporting = false;
-                showSpinner = false;
-                await toolBar.ClearSearch();
+                diagram.BeginUpdate();
+                await ParseAndUpdateDiagram();
             }
+            await diagram.DoLayoutAsync();
+            await diagram.EndUpdateAsync();
+            diagram.FitToPage(new FitOptions() { Mode = FitMode.Both, Region = DiagramRegion.Content, CanZoomIn = true });
+            isUpdateDiagram = false;
+            preventRendering = false;
+            XmlJSONTypeChange = false;
+            isJsonImporting = false;
+            showSpinner = false;
+            await toolBar.ClearSearch();
         }
         catch
         {
             showSpinner = true;   
         }
+    }
+
+    public void Dispose()
+    {
+        debounceTimer?.Dispose();
     }
 
     private async Task<bool> IsEditorContentValidAsync()
