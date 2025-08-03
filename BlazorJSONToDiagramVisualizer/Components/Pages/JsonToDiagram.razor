@@ -409,8 +409,26 @@ IsModal="true" @bind-Visible="isDialogVisible">
         {
             if (currentEditorInputType == EditorInputType.xml)
             {
-                // Attempt to parse the content as XML
-                XDocument.Parse(editorContent);
+                try
+                {
+                    // Try to parse as single-root XML
+                    XDocument.Parse(editorContent);
+                    return true;
+                }
+                catch
+                {
+                    try
+                    {
+                        // Try to parse as multi-root XML by wrapping with a root node
+                        var wrapped = $"<__root__>{editorContent}</__root__>";
+                        XDocument.Parse(wrapped);
+                        return true;
+                    }
+                    catch
+                    {
+                        return false;
+                    }
+                }
             }
             else if (currentEditorInputType == EditorInputType.json)
             {
