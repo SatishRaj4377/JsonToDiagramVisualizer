@@ -254,9 +254,14 @@ IsModal="true" @bind-Visible="isDialogVisible">
         {
             double newWidth = startWidth + (clientX - startX);
             double maxWidth = windowWidth * 0.4; // e.g. max 40% of window
+            double minWidth = 150;
             if (newWidth > maxWidth)
             {
                 newWidth = maxWidth;
+            }
+            if (newWidth < minWidth)
+            {
+                newWidth = minWidth;
             }
             editorPanelWidthPx = newWidth + "px";
             InvokeAsync(StateHasChanged);
