@@ -214,6 +214,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private List<Node> searchMatches = new List<Node>();
     private int currentMatchIndex = 0;
     private string currentSearchQuery = "";
+    private bool isSearchPerformed = false;
 
     private int nodeCount => diagramData.Nodes.Count;
     private bool isInputValidStatus = true;
@@ -406,7 +407,12 @@ IsModal="true" @bind-Visible="isDialogVisible">
     private async Task ClearSearchBox()
     {
         await toolBar.ClearSearch();
-        await SearchNodes("");
+        // boolean to check if search was performed or not, to avoid unncessary clearing of node styles
+        if (isSearchPerformed)
+        {
+            await SearchNodes("");
+            isSearchPerformed = false;
+        }
     }
 
     private async Task<bool> IsEditorContentValidAsync()
@@ -1428,8 +1434,7 @@ IsModal="true" @bind-Visible="isDialogVisible">
 
     private async Task SearchNodes(string searchText)
     {
-        diagram.ResetZoom();
-
+        isSearchPerformed = true;
         currentSearchQuery = searchText.Trim().ToLower();
         searchMatches.Clear();
         currentMatchIndex = 0;
@@ -1445,6 +1450,8 @@ IsModal="true" @bind-Visible="isDialogVisible">
             await toolBar.UpdateSearchCounter(0, 0, false);
             return;
         }
+
+        diagram.ResetZoom();
 
         // Find matching nodes
         foreach (var node in diagram.Nodes!)
