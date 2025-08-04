@@ -33,7 +33,7 @@
     private void OnSearchInput(InputEventArgs args)
     {
         var searchText = args?.Value?.ToString()?.Trim() ?? "";
-        OnToolBarAction.InvokeAsync($"search:{searchText}");
+        OnToolBarAction.InvokeAsync(searchText);
     }
 
     private async void AddSearchIcon()
@@ -59,7 +59,6 @@
         {
             TextBoxDropDownObj.Value = "";
         }
-        await UpdateSearchCounter(0, 0, false);
     }
 
     public async Task UpdateSearchCounter(int current, int total, bool showCounter)
