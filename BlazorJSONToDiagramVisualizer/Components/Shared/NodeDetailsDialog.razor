@@ -239,7 +239,50 @@
 
     private static string GetFormattedJsonString(string content)
     {
+        if (string.IsNullOrWhiteSpace(content))
+            return string.Empty;
+
         var formattedLines = FormatJsonLines(content);
+
+        // Handle single value case (no key-value pairs found)
+        if (formattedLines.Count == 0)
+        {
+            // Check if content has no newlines (single value scenario)
+            if (!content.Contains('\n'))
+            {
+                var trimmedContent = content.Trim();
+
+                // Check if it's a number
+                if (int.TryParse(trimmedContent, out _) || double.TryParse(trimmedContent, out _))
+                {
+                    return trimmedContent;
+                }
+
+                // Check if it's a boolean
+                if (bool.TryParse(trimmedContent, out bool boolResult))
+                {
+                    return boolResult.ToString().ToLower();
+                }
+
+                // Check if it's null
+                if (string.Equals(trimmedContent, "null", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "null";
+                }
+
+                // Everything else is treated as a string - add quotes if not already present
+                if (!trimmedContent.StartsWith("\"") || !trimmedContent.EndsWith("\""))
+                {
+                    return $"\"{trimmedContent}\"";
+                }
+                return trimmedContent;
+            }
+
+            // Multiple lines but no key-value pairs - use existing behavior
+            return $"\"{content}\"";
+        }
+
+        // Handle key-value pairs (existing behavior - unchanged)
         var result = "{\n";
 
         foreach (var (key, value, hasComma) in formattedLines)
